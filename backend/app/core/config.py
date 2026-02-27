@@ -7,13 +7,14 @@ class Settings(BaseSettings):
     VERSION: str = "1.0.0"
     API_V1_PREFIX: str = "/api/v1"
 
-    # 上传配置
-    UPLOAD_DIR: str = "uploads"
+    # 上传配置 - 使用绝对路径
+    BASE_DIR: str = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    UPLOAD_DIR: str = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "uploads")
     MAX_FILE_SIZE: int = 50 * 1024 * 1024  # 50MB
     ALLOWED_EXTENSIONS: list = [".mdb", ".accdb", ".bak", ".sql", ".mysql"]
 
-    # 数据库配置
-    DATABASE_URL: str = "sqlite:///./data/equipment_analysis.db"
+    # 数据库配置 - 使用绝对路径
+    DATABASE_URL: str = "sqlite:///" + os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), "data", "equipment_analysis.db")
 
     # AI配置
     DEEPSEEK_API_KEY: Optional[str] = None
@@ -36,4 +37,4 @@ settings = Settings()
 
 # 确保上传目录存在
 os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
-os.makedirs("data", exist_ok=True)
+os.makedirs(os.path.dirname(settings.DATABASE_URL.replace("sqlite:///", "")), exist_ok=True)

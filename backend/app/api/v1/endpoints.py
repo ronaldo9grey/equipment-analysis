@@ -6,6 +6,7 @@ import os
 import uuid
 import shutil
 from datetime import datetime
+import logging
 
 from app.core.database import get_db, init_db, AnalysisRecord, TableData
 from app.core.config import settings
@@ -17,10 +18,15 @@ from app.schemas.equipment import (
 from app.services.file_parser import get_parser
 from app.services.ai_analyzer import get_analyzer
 
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
 ALLOWED_EXTENSIONS = {".mdb", ".accdb", ".bak", ".sql", ".mysql"}
 MAX_FILE_SIZE = 50 * 1024 * 1024  # 50MB
+
+# 确保上传目录存在
+os.makedirs(settings.UPLOAD_DIR, exist_ok=True)
 
 
 @router.get("/health")
@@ -90,13 +96,21 @@ async def upload_file(
             f"{file_id}{file_ext}"
         )
 
+        logger.info(f"开始保存文件: {file.filename}, 大小: {file_size} bytes")
+
         with open(file_location, "wb") as f:
             f.write(content)
 
+        logger.info(f"文件保存成功: {file_location}, 实际大小: {os.path.getsize(file_location)} bytes")
+
         file_type = get_file_type(file.filename)
+
+        logger.info(f"开始解析文件: {file_location}")
 
         parser = get_parser(file_location)
         parse_result = parser.parse(file_location)
+
+        logger.info(f"解析完成: {len(parse_result.get('tables', []))} 个表, {parse_result.get('total_records', 0)} 条记录")
 
         record = AnalysisRecord(
             id=file_id,
