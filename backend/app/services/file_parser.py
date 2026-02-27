@@ -94,32 +94,30 @@ class MDBParser(DatabaseParser):
     def read_table(self, file_path: str, table_name: str, limit: int = 1000) -> pd.DataFrame:
         """读取指定表的数据"""
         try:
+            logger.info(f"使用mdb-export读取表: {table_name}")
+            
             # 使用mdb-export导出
             result = subprocess.run(
                 ['mdb-export', file_path, table_name],
                 capture_output=True,
-                timeout=60,
-                shell=True
+                text=True,
+                timeout=60
             )
 
-            if result.returncode == 0 and result.stdout:
-                # 尝试多种编码
-                for encoding in ['gbk', 'gb2312', 'utf-8', 'latin-1']:
-                    try:
-                        decoded = result.stdout.decode(encoding)
-                        from io import StringIO
-                        df = pd.read_csv(StringIO(decoded), nrows=limit)
-                        df = df.where(pd.notnull(df), None)
-                        return df
-                    except:
-                        continue
+            logger.info(f"mdb-export返回码: {result.returncode}")
+            logger.info(f"mdb-export输出长度: {len(result.stdout) if result.stdout else 0}")
+            logger.info(f"mdb-export错误: {result.stderr[:200] if result.stderr else '空'}")
 
-                # 如果都失败，使用容错解码
-                decoded = result.stdout.decode('gbk', errors='ignore')
+            if result.returncode == 0 and result.stdout:
+                # text=True时，stdout已经是字符串
                 from io import StringIO
-                df = pd.read_csv(StringIO(decoded), nrows=limit)
-                df = df.where(pd.notnull(df), None)
-                return df
+                try:
+                    df = pd.read_csv(StringIO(result.stdout), nrows=limit)
+                    df = df.where(pd.notnull(df), None)
+                    logger.info(f"成功读取 {len(df)} 行数据")
+                    return df
+                except Exception as e:
+                    logger.error(f"CSV解析失败: {e}")
 
             return pd.DataFrame()
 
