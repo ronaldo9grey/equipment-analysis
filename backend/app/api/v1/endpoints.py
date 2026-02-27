@@ -287,11 +287,14 @@ async def analyze_data(
 
         if not record:
             logger.warning(f"记录不存在: {request.record_id}")
+            logger.warning(f"数据库中的记录ID列表: {[r.id for r in db.query(AnalysisRecord).all()]}")
             raise HTTPException(status_code=404, detail=f"记录不存在: {request.record_id}")
 
         # completed 或 analyzed 状态都可以再次分析
         if record.status not in ["completed", "analyzed"]:
             raise HTTPException(status_code=400, detail="数据尚未解析完成")
+
+        logger.info(f"开始AI分析，记录状态: {record.status}")
 
         tables = db.query(TableData).filter(
             TableData.record_id == request.record_id
@@ -312,12 +315,14 @@ async def analyze_data(
         }
 
         analyzer = get_analyzer(use_local_model=request.use_local_model)
+        logger.info(f"调用AI分析器完成，准备分析")
 
         analysis_result = analyzer.analyze(
             data=data,
             user_query=request.query,
             analysis_type="general"
         )
+        logger.info(f"AI分析完成，结果状态: {analysis_result.get('status')}")
 
         record.analysis_result = analysis_result.get("result")
         record.completed_at = datetime.now()
