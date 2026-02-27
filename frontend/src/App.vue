@@ -93,7 +93,7 @@
                       <el-button
                         type="primary"
                         :loading="analyzing"
-                        :disabled="selectedRecord.status !== 'completed'"
+                        :disabled="selectedRecord.status !== 'completed' && selectedRecord.status !== 'analyzed'"
                         @click="handleAnalyze"
                       >
                         {{ analyzing ? '分析中...' : 'AI智能分析' }}
