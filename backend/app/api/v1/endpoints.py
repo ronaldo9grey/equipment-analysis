@@ -286,7 +286,8 @@ async def analyze_data(
         if not record:
             raise HTTPException(status_code=404, detail="记录不存在")
 
-        if record.status != "completed":
+        # completed 或 analyzed 状态都可以再次分析
+        if record.status not in ["completed", "analyzed"]:
             raise HTTPException(status_code=400, detail="数据尚未解析完成")
 
         tables = db.query(TableData).filter(
