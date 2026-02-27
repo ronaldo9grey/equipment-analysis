@@ -121,7 +121,7 @@
                 <el-tabs v-model="activeTab" class="data-tabs">
                   <el-tab-pane label="数据表" name="tables">
                     <div class="tables-list">
-                      <el-table :data="tables" stripe @row-click="handleTableClick">
+                      <el-table :data="tables" stripe>
                         <el-table-column prop="table_name" label="表名" />
                         <el-table-column prop="columns" label="字段数">
                           <template #default="{ row }">
