@@ -279,12 +279,15 @@ async def analyze_data(
 ):
     """使用AI分析数据"""
     try:
+        logger.info(f"analyze请求参数: {request.record_id}, {request.query}, {request.use_local_model}")
+        
         record = db.query(AnalysisRecord).filter(
             AnalysisRecord.id == request.record_id
         ).first()
 
         if not record:
-            raise HTTPException(status_code=404, detail="记录不存在")
+            logger.warning(f"记录不存在: {request.record_id}")
+            raise HTTPException(status_code=404, detail=f"记录不存在: {request.record_id}")
 
         # completed 或 analyzed 状态都可以再次分析
         if record.status not in ["completed", "analyzed"]:
