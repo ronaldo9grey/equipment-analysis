@@ -66,25 +66,22 @@ class MDBParser(DatabaseParser):
     def get_table_list(self, file_path: str) -> List[str]:
         """获取MDB文件中的表列表"""
         try:
+            logger.info(f"使用mdb-tables获取表列表: {file_path}")
+            
             # 尝试mdb-tables命令
             result = subprocess.run(
                 ['mdb-tables', '-1', file_path],
                 capture_output=True,
                 text=True,
-                timeout=30,
-                shell=True
+                timeout=30
             )
 
-            if result.returncode == 0 and result.stdout.strip():
-                # 尝试多种编码
-                for encoding in ['utf-8', 'gbk', 'gb2312', 'latin-1']:
-                    try:
-                        tables = result.stdout.decode(encoding).strip().split('\n')
-                        return [t.strip() for t in tables if t.strip()]
-                    except:
-                        continue
+            logger.info(f"mdb-tables返回码: {result.returncode}")
+            logger.info(f"mdb-tables输出: {result.stdout[:500] if result.stdout else '空'}")
+            logger.info(f"mdb-tables错误: {result.stderr[:500] if result.stderr else '空'}")
 
-                # 如果都失败，使用原始输出
+            if result.returncode == 0 and result.stdout.strip():
+                # text=True时，stdout已经是字符串，不需要decode
                 tables = result.stdout.strip().split('\n')
                 return [t.strip() for t in tables if t.strip()]
 
