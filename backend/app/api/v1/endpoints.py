@@ -369,13 +369,3 @@ async def delete_record(
         os.remove(file_location)
 
     return {"message": "删除成功"}
-
-
-@router.get("/health")
-async def health_check():
-    """健康检查"""
-    return {
-        "status": "healthy",
-        "version": settings.VERSION,
-        "upload_dir": settings.UPLOAD_DIR
-    }
