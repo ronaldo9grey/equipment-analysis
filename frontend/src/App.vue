@@ -496,7 +496,7 @@ onMounted(() => {
 }
 
 .main-content {
-  padding: 12px;
+  padding: 16px;
   height: calc(100vh - 60px);
   box-sizing: border-box;
 }
@@ -504,6 +504,7 @@ onMounted(() => {
 .content-row {
   height: 100%;
   display: flex;
+  gap: 16px;
 }
 
 .content-row > .el-col {
@@ -511,26 +512,30 @@ onMounted(() => {
   flex: 0 0 auto;
 }
 
+.left-panel {
+  width: 400px;
+  min-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.left-card {
+  flex: 0 0 auto;
+  min-height: 320px;
+}
+
 .left-card, .right-card {
   height: 100%;
-  min-height: 400px;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
   box-sizing: border-box;
 }
 
-.left-panel {
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  min-height: 400px;
-  gap: 12px;
-}
-
-.left-card {
-  flex: 0 0 auto;
-  min-height: 280px;
+.right-card {
+  flex: 1;
+  min-width: 600px;
 }
 
 .left-card :deep(.el-card__body),
@@ -610,7 +615,7 @@ onMounted(() => {
 .records-card {
   flex: 1;
   overflow: hidden;
-  min-height: 0;
+  min-height: 200px;
 }
 
 .records-card :deep(.el-card__body) {
@@ -781,7 +786,8 @@ onMounted(() => {
 
 .empty-card {
   height: 100%;
-  min-height: 400px;
+  min-height: 500px;
+  min-width: 600px;
   display: flex;
   align-items: center;
   justify-content: center;
