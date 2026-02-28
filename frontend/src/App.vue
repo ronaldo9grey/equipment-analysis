@@ -24,7 +24,7 @@
 
       <el-main class="main-content">
         <el-row :gutter="16" class="content-row">
-          <el-col :xs="24" :sm="24" :md="8" :lg="7">
+          <el-col :span="7">
             <div class="left-panel">
               <el-card class="left-card" shadow="hover">
                 <template #header>
@@ -95,7 +95,7 @@
             </div>
           </el-col>
 
-          <el-col :xs="24" :sm="24" :md="16" :lg="17">
+          <el-col :span="17">
             <el-card class="right-card" shadow="hover" v-if="selectedRecord">
               <template #header>
                 <div class="card-header card-header-responsive">
@@ -503,20 +503,34 @@ onMounted(() => {
 
 .content-row {
   height: 100%;
+  display: flex;
+}
+
+.content-row > .el-col {
+  min-width: 0;
+  flex: 0 0 auto;
 }
 
 .left-card, .right-card {
   height: 100%;
+  min-height: 400px;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
+  box-sizing: border-box;
 }
 
 .left-panel {
   display: flex;
   flex-direction: column;
   height: 100%;
+  min-height: 400px;
   gap: 12px;
+}
+
+.left-card {
+  flex: 0 0 auto;
+  min-height: 280px;
 }
 
 .left-card :deep(.el-card__body),
@@ -767,6 +781,7 @@ onMounted(() => {
 
 .empty-card {
   height: 100%;
+  min-height: 400px;
   display: flex;
   align-items: center;
   justify-content: center;
