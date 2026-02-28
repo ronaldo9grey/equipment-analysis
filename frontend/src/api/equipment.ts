@@ -33,6 +33,7 @@ export interface AnalysisRecord {
   table_count: number
   record_count: number
   status: string
+  table_name?: string
   analysis_result?: any
   error_message?: string
   created_at: string

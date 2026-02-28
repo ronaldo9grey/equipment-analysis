@@ -80,7 +80,7 @@
                 >
                   <div class="record-name">
                     <el-icon><Document /></el-icon>
-                    {{ record.file_name }}
+                    {{ record.file_name }}{{ record.table_name ? ` (${record.table_name})` : '' }}
                   </div>
                   <div class="record-info">
                     <el-tag size="small" :type="getStatusType(record.status)" effect="dark">
@@ -293,6 +293,21 @@ const selectRecord = async (record: AnalysisRecord) => {
   selectedRecord.value = record
   if (record.status === 'completed' || record.status === 'analyzed') {
     await loadTables(record.id)
+    
+    if (record.table_name && tables.value.length > 0) {
+      const targetTable = tables.value.find(t => t.table_name === record.table_name)
+      if (targetTable) {
+        currentTable.value = targetTable
+        tableData.value = targetTable.preview || []
+        currentTableColumns.value = targetTable.columns || []
+        tablePagination.value = {
+          page: 1,
+          pageSize: 100,
+          total: targetTable.row_count || 0
+        }
+        tableDialogVisible.value = true
+      }
+    }
   }
 }
 
@@ -363,9 +378,21 @@ const handleAnalyzeTable = async (table: TableInfo) => {
       undefined,
       useLocalModel.value
     )
+    selectedRecord.value.id = result.record_id
     selectedRecord.value.analysis_result = result.result
+    selectedRecord.value.table_name = table.table_name
     ElMessage.success(`表 ${table.table_name} 分析完成`)
     activeTab.value = 'analysis'
+    
+    currentTable.value = table
+    tableData.value = table.preview || []
+    currentTableColumns.value = table.columns || []
+    tablePagination.value = {
+      page: 1,
+      pageSize: 100,
+      total: table.row_count || 0
+    }
+    tableDialogVisible.value = true
   } catch (error: any) {
     console.error('分析错误:', error)
     ElMessage.error(error.response?.data?.detail || '分析失败')
