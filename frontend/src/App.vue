@@ -408,6 +408,8 @@ const renderMarkdown = (text: string): string => {
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
   html = html.replace(/^- (.*$)/gim, '<li class="md-li">$1</li>')
+  html = html.replace(/^(\*[^#][^*].*$)/gim, '<p class="md-li">$1</p>')
+  html = html.replace(/^(\d+)\.\s+(.*$)/gim, '<li class="md-li md-ol" data-num="$1">$2</li>')
   html = html.replace(/`([^`]+)`/g, '<code class="md-code">$1</code>')
   
   html = html.replace(/\n\n/g, '</p><p class="md-p">')
@@ -418,6 +420,8 @@ const renderMarkdown = (text: string): string => {
   html = html.replace(/<\/h\d><\/p>/g, '</h2>')
   html = html.replace(/<p class="md-p"><li/g, '<li')
   html = html.replace(/<\/li><\/p>/g, '</li>')
+  html = html.replace(/<p class="md-p"><p class="md-li">/g, '<p class="md-li">')
+  html = html.replace(/<\/p><\/p>/g, '</p>')
   
   return html
 }
@@ -675,38 +679,43 @@ onMounted(() => {
 .analysis-result {
   height: 100%;
   overflow-y: auto;
-  padding: 12px;
+  padding: 16px;
   background: #fff;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: 14px;
+  text-align: left;
 }
 
 .analysis-result :deep(.md-h1) {
   font-size: 18px;
-  margin: 12px 0 10px;
-  padding-bottom: 6px;
+  margin: 16px 0 12px;
+  padding-bottom: 8px;
   border-bottom: 2px solid #409eff;
+  text-align: left;
 }
 
 .analysis-result :deep(.md-h2) {
-  font-size: 15px;
+  font-size: 16px;
   color: #303133;
-  margin: 10px 0 8px;
-  padding-left: 8px;
-  border-left: 3px solid #67c23a;
+  margin: 14px 0 10px;
+  padding-left: 10px;
+  border-left: 4px solid #67c23a;
+  text-align: left;
 }
 
 .analysis-result :deep(.md-h3) {
-  font-size: 14px;
+  font-size: 15px;
   color: #409eff;
-  margin: 8px 0 6px;
+  margin: 12px 0 8px;
+  text-align: left;
 }
 
 .analysis-result :deep(.md-p),
 .analysis-result :deep(.md-li) {
-  line-height: 1.6;
+  line-height: 1.8;
   color: #606266;
-  margin: 4px 0;
+  margin: 8px 0;
+  text-align: left;
 }
 
 .analysis-result :deep(strong) {
@@ -715,9 +724,45 @@ onMounted(() => {
 
 .analysis-result :deep(.md-code) {
   background: #f5f7fa;
-  padding: 1px 4px;
+  padding: 2px 6px;
   border-radius: 3px;
+  font-size: 13px;
+}
+
+.analysis-result :deep(em) {
+  color: #909399;
+  font-style: italic;
+}
+
+.analysis-result :deep(.md-li.md-ol) {
+  padding-left: 8px;
+  margin-left: 0;
+  list-style-type: none;
+  position: relative;
+  padding-left: 24px;
+}
+
+.analysis-result :deep(.md-li.md-ol)::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 18px;
+  height: 100%;
+  background: linear-gradient(135deg, #409eff 0%, #67c23a 100%);
+  border-radius: 3px;
+  opacity: 0.15;
+}
+
+.analysis-result :deep(.md-li.md-ol)::after {
+  content: attr(data-num);
+  position: absolute;
+  left: 6px;
+  top: 50%;
+  transform: translateY(-50%);
   font-size: 12px;
+  font-weight: 600;
+  color: #409eff;
 }
 
 .empty-card {
