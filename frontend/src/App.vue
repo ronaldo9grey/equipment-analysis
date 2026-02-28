@@ -8,13 +8,16 @@
             <h1>设备运行数据分析</h1>
           </div>
           <div class="header-actions">
-            <el-switch
+            <el-select
               v-model="useLocalModel"
-              active-text="本地"
-              inactive-text="DeepSeek"
               @change="handleModelChange"
-              class="model-switch"
-            />
+              placeholder="选择AI模型"
+              size="small"
+              style="width: 140px"
+            >
+              <el-option :value="false" label="DeepSeek 云端" />
+              <el-option :value="true" label="Ollama 本地" />
+            </el-select>
           </div>
         </div>
       </el-header>
@@ -22,72 +25,74 @@
       <el-main class="main-content">
         <el-row :gutter="16" class="content-row">
           <el-col :xs="24" :sm="24" :md="8" :lg="7">
-            <el-card class="left-card" shadow="hover">
-              <template #header>
-                <div class="card-header">
-                  <span><el-icon><UploadFilled /></el-icon> 上传数据</span>
-                </div>
-              </template>
-              <el-upload
-                class="upload-area"
-                drag
-                :action="uploadUrl"
-                :auto-upload="false"
-                :on-change="handleFileChange"
-                :on-success="handleUploadSuccess"
-                :on-error="handleUploadError"
-                :limit="1"
-                :accept="acceptTypes"
-              >
-                <el-icon class="upload-icon"><upload-filled /></el-icon>
-                <div class="upload-text">
-                  拖拽或<em>点击上传</em>
-                </div>
-                <template #tip>
-                  <div class="upload-tip">支持 MDB、ACCDB、SQL</div>
+            <div class="left-panel">
+              <el-card class="left-card" shadow="hover">
+                <template #header>
+                  <div class="card-header">
+                    <span><el-icon><UploadFilled /></el-icon> 上传数据</span>
+                  </div>
                 </template>
-              </el-upload>
-              <el-button
-                type="primary"
-                :loading="uploading"
-                :disabled="!selectedFile"
-                @click="handleUpload"
-                class="upload-btn"
-              >
-                {{ uploading ? '解析中...' : '开始解析' }}
-              </el-button>
-            </el-card>
-
-            <el-card class="records-card" shadow="hover" v-if="records.length > 0">
-              <template #header>
-                <div class="card-header">
-                  <span><el-icon><Document /></el-icon> 历史记录</span>
-                  <el-button text @click="loadRecords">
-                    <el-icon><Refresh /></el-icon>
-                  </el-button>
-                </div>
-              </template>
-              <div class="records-list">
-                <div
-                  v-for="record in records"
-                  :key="record.id"
-                  class="record-item"
-                  :class="{ active: selectedRecord?.id === record.id }"
-                  @click="selectRecord(record)"
+                <el-upload
+                  class="upload-area"
+                  drag
+                  :action="uploadUrl"
+                  :auto-upload="false"
+                  :on-change="handleFileChange"
+                  :on-success="handleUploadSuccess"
+                  :on-error="handleUploadError"
+                  :limit="1"
+                  :accept="acceptTypes"
                 >
-                  <div class="record-name">
-                    <el-icon><Document /></el-icon>
-                    {{ record.file_name }}
+                  <el-icon class="upload-icon"><upload-filled /></el-icon>
+                  <div class="upload-text">
+                    拖拽或<em>点击上传</em>
                   </div>
-                  <div class="record-info">
-                    <el-tag size="small" :type="getStatusType(record.status)" effect="dark">
-                      {{ getStatusText(record.status) }}
-                    </el-tag>
-                    <span class="record-time">{{ formatTime(record.created_at) }}</span>
+                  <template #tip>
+                    <div class="upload-tip">支持 MDB、ACCDB、SQL</div>
+                  </template>
+                </el-upload>
+                <el-button
+                  type="primary"
+                  :loading="uploading"
+                  :disabled="!selectedFile"
+                  @click="handleUpload"
+                  class="upload-btn"
+                >
+                  {{ uploading ? '解析中...' : '开始解析' }}
+                </el-button>
+              </el-card>
+
+              <el-card class="records-card" shadow="hover" v-if="records.length > 0">
+                <template #header>
+                  <div class="card-header">
+                    <span><el-icon><Document /></el-icon> 历史记录</span>
+                    <el-button text @click="loadRecords">
+                      <el-icon><Refresh /></el-icon>
+                    </el-button>
+                  </div>
+                </template>
+                <div class="records-list">
+                  <div
+                    v-for="record in records"
+                    :key="record.id"
+                    class="record-item"
+                    :class="{ active: selectedRecord?.id === record.id }"
+                    @click="selectRecord(record)"
+                  >
+                    <div class="record-name">
+                      <el-icon><Document /></el-icon>
+                      {{ record.file_name }}
+                    </div>
+                    <div class="record-info">
+                      <el-tag size="small" :type="getStatusType(record.status)" effect="dark">
+                        {{ getStatusText(record.status) }}
+                      </el-tag>
+                      <span class="record-time">{{ formatTime(record.created_at) }}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
-            </el-card>
+              </el-card>
+            </div>
           </el-col>
 
           <el-col :xs="24" :sm="24" :md="16" :lg="17">
@@ -360,7 +365,7 @@ const handleDelete = async () => {
 }
 
 const handleModelChange = (value: boolean) => {
-  ElMessage.info(value ? '本地模型' : 'DeepSeek模型')
+  ElMessage.info(value ? '已切换到本地模型' : '已切换到DeepSeek模型')
 }
 
 const getStatusType = (status: string) => {
@@ -426,6 +431,7 @@ onMounted(() => {
 .app-container {
   min-height: 100vh;
   background: #f5f7fa;
+  overflow: hidden;
 }
 
 .header {
@@ -459,26 +465,62 @@ onMounted(() => {
   font-weight: 600;
 }
 
-.model-switch {
-  font-size: 12px;
+.header-actions {
+  display: flex;
+  align-items: center;
+}
+
+:deep(.header-actions .el-select) {
+  --el-select-input-focus-border-color: #409eff;
+}
+
+:deep(.header-actions .el-select .el-input__wrapper) {
+  background-color: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
+}
+
+:deep(.header-actions .el-select .el-input__inner) {
+  color: white;
+}
+
+:deep(.header-actions .el-select .el-input__placeholder) {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+:deep(.header-actions .el-select .el-select__caret) {
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .main-content {
   padding: 12px;
+  height: calc(100vh - 60px);
+  box-sizing: border-box;
 }
 
 .content-row {
-  min-height: calc(100vh - 60px);
+  height: 100%;
 }
 
 .left-card, .right-card {
   height: 100%;
   border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+}
+
+.left-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  gap: 12px;
 }
 
 .left-card :deep(.el-card__body),
 .right-card :deep(.el-card__body) {
-  padding: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .card-header {
@@ -514,6 +556,7 @@ onMounted(() => {
 }
 
 .upload-area {
+  flex: 0 0 auto;
   margin-bottom: 12px;
 }
 
@@ -547,11 +590,19 @@ onMounted(() => {
 }
 
 .records-card {
-  margin-top: 12px;
+  flex: 1;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.records-card :deep(.el-card__body) {
+  padding: 0;
+  max-height: 100%;
+  overflow: hidden;
 }
 
 .records-list {
-  max-height: 300px;
+  max-height: 100%;
   overflow-y: auto;
 }
 
@@ -599,16 +650,30 @@ onMounted(() => {
 }
 
 .data-tabs {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   margin-top: 12px;
 }
 
+.data-tabs :deep(.el-tabs__content) {
+  flex: 1;
+  overflow: hidden;
+}
+
+.data-tabs :deep(.el-tab-pane) {
+  height: 100%;
+  overflow: hidden;
+}
+
 .tables-list {
-  max-height: 35vh;
+  height: 100%;
   overflow: auto;
 }
 
 .analysis-result {
-  max-height: 50vh;
+  height: 100%;
   overflow-y: auto;
   padding: 12px;
   background: #fff;
@@ -656,7 +721,7 @@ onMounted(() => {
 }
 
 .empty-card {
-  min-height: 300px;
+  height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
