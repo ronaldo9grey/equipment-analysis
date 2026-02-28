@@ -18,6 +18,8 @@ class AnalysisRecord(Base):
     table_count = Column(Integer, default=0)
     record_count = Column(Integer, default=0)
     analysis_result = Column(JSON)
+    table_name = Column(String(255), nullable=True)
+    analysis_type = Column(String(20), default="general")
     status = Column(String(20), default="pending")
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.now)

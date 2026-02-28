@@ -149,9 +149,10 @@
                         </template>
                       </el-table-column>
                       <el-table-column prop="row_count" label="记录" width="80" />
-                      <el-table-column label="操作" width="80">
+                      <el-table-column label="操作" width="140">
                         <template #default="{ row }">
                           <el-button type="primary" link size="small" @click.stop="viewTableData(row)">查看</el-button>
+                          <el-button type="success" link size="small" @click.stop="handleAnalyzeTable(row)">AI分析</el-button>
                         </template>
                       </el-table-column>
                     </el-table>
@@ -159,6 +160,14 @@
                 </el-tab-pane>
 
                 <el-tab-pane label="AI分析" name="analysis">
+                  <div class="analysis-info" v-if="selectedRecord.analysis_result?.content">
+                    <el-tag :type="selectedRecord.analysis_result?.data_mode === '全量' ? 'success' : 'warning'" effect="dark" size="small">
+                      {{ selectedRecord.analysis_result?.data_mode === '全量' ? '全量分析' : '采样分析 (1000条)' }}
+                    </el-tag>
+                    <el-tag type="info" size="small" v-if="selectedRecord.analysis_result?.table_name">
+                      表: {{ selectedRecord.analysis_result.table_name }}
+                    </el-tag>
+                  </div>
                   <div class="analysis-result" v-if="selectedRecord.analysis_result?.content" v-html="renderMarkdown(selectedRecord.analysis_result.content)">
                   </div>
                   <el-empty v-else description="暂无分析结果" />
@@ -329,10 +338,33 @@ const handleAnalyze = async () => {
     const result = await equipmentApi.analyzeData(
       selectedRecord.value.id,
       undefined,
+      undefined,
       useLocalModel.value
     )
     selectedRecord.value.analysis_result = result.result
     ElMessage.success('分析完成')
+    activeTab.value = 'analysis'
+  } catch (error: any) {
+    console.error('分析错误:', error)
+    ElMessage.error(error.response?.data?.detail || '分析失败')
+  } finally {
+    analyzing.value = false
+  }
+}
+
+const handleAnalyzeTable = async (table: TableInfo) => {
+  if (!selectedRecord.value) return
+
+  analyzing.value = true
+  try {
+    const result = await equipmentApi.analyzeData(
+      selectedRecord.value.id,
+      table.table_name,
+      undefined,
+      useLocalModel.value
+    )
+    selectedRecord.value.analysis_result = result.result
+    ElMessage.success(`表 ${table.table_name} 分析完成`)
     activeTab.value = 'analysis'
   } catch (error: any) {
     console.error('分析错误:', error)
@@ -704,6 +736,14 @@ onMounted(() => {
   border-radius: 6px;
   font-size: 14px;
   text-align: left;
+}
+
+.analysis-info {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ebeef5;
 }
 
 .analysis-result :deep(.md-h1) {

@@ -279,7 +279,7 @@ async def analyze_data(
 ):
     """使用AI分析数据"""
     try:
-        logger.info(f"analyze请求参数: {request.record_id}, {request.query}, {request.use_local_model}")
+        logger.info(f"analyze请求参数: {request.record_id}, {request.query}, {request.use_local_model}, table_name: {request.table_name}")
         
         record = db.query(AnalysisRecord).filter(
             AnalysisRecord.id == request.record_id
@@ -296,23 +296,64 @@ async def analyze_data(
 
         logger.info(f"开始AI分析，记录状态: {record.status}")
 
+        # 创建新的分析记录，保存历史
+        new_record = AnalysisRecord(
+            id=str(uuid.uuid4()),
+            file_name=record.file_name,
+            file_size=record.file_size,
+            file_type=record.file_type,
+            table_count=record.table_count,
+            record_count=record.record_count,
+            status="pending",
+            table_name=request.table_name,
+            analysis_type="table" if request.table_name else "general"
+        )
+        db.add(new_record)
+        db.flush()
+
         tables = db.query(TableData).filter(
             TableData.record_id == request.record_id
         ).all()
 
-        data = {
-            "file_name": record.file_name,
-            "total_records": record.record_count,
-            "tables": [
-                {
-                    "table_name": t.table_name,
-                    "columns": t.columns,
-                    "row_count": t.row_count,
-                    "preview": t.data[:10] if t.data else []
-                }
-                for t in tables
-            ]
-        }
+        if request.table_name:
+            target_table = next((t for t in tables if t.table_name == request.table_name), None)
+            if not target_table:
+                raise HTTPException(status_code=404, detail=f"表 {request.table_name} 不存在")
+            
+            row_count = target_table.row_count or 0
+            if row_count < 1000:
+                table_data = target_table.data if target_table.data else []
+                data_mode = "全量"
+            else:
+                table_data = target_table.data[:1000] if target_table.data else []
+                data_mode = "采样"
+            
+            data = {
+                "file_name": record.file_name,
+                "table_name": target_table.table_name,
+                "columns": target_table.columns,
+                "row_count": row_count,
+                "data": table_data,
+                "data_mode": data_mode
+            }
+            analysis_type = "table"
+            logger.info(f"分析特定表: {request.table_name}, 数据条数: {row_count}, 模式: {data_mode}")
+        else:
+            data = {
+                "file_name": record.file_name,
+                "total_records": record.record_count,
+                "tables": [
+                    {
+                        "table_name": t.table_name,
+                        "columns": t.columns,
+                        "row_count": t.row_count,
+                        "preview": t.data[:10] if t.data else []
+                    }
+                    for t in tables
+                ]
+            }
+            analysis_type = "general"
+            logger.info(f"分析整个文件，包含 {len(tables)} 个表")
 
         analyzer = get_analyzer(use_local_model=request.use_local_model)
         logger.info(f"调用AI分析器完成，准备分析")
@@ -320,28 +361,30 @@ async def analyze_data(
         analysis_result = analyzer.analyze(
             data=data,
             user_query=request.query,
-            analysis_type="general"
+            analysis_type=analysis_type
         )
         logger.info(f"AI分析完成，结果状态: {analysis_result.get('status')}")
 
-        record.analysis_result = analysis_result.get("result")
-        record.completed_at = datetime.now()
+        new_record.analysis_result = analysis_result.get("result")
+        new_record.completed_at = datetime.now()
 
         if analysis_result.get("status") == "success":
-            record.status = "analyzed"
+            new_record.status = "analyzed"
         else:
-            record.status = "failed"
-            record.error_message = analysis_result.get("message")
+            new_record.status = "failed"
+            new_record.error_message = analysis_result.get("message")
 
         db.commit()
 
         return AnalyzeResponse(
-            record_id=request.record_id,
-            status=record.status,
+            record_id=new_record.id,
+            status=new_record.status,
             result=analysis_result.get("result"),
             message=analysis_result.get("message", "分析完成")
         )
 
+    except HTTPException:
+        raise
     except Exception as e:
         import traceback
         traceback.print_exc()

@@ -128,6 +128,22 @@ class AIAnalyzer:
 
 请用中文生成正式的分析报告格式。
 """
+        elif analysis_type == "table":
+            table_name = data.get("table_name", "")
+            row_count = data.get("row_count", 0)
+            columns = data.get("columns", [])
+            data_mode = data.get("data_mode", "采样")
+            base_prompt += f"""
+请对表「{table_name}」进行详细数据分析：
+- 当前表共有 {row_count} 条记录
+- 数据模式：{data_mode}（{'数据量小于1000条，已使用全部数据' if data_mode == '全量' else '数据量大于1000条，已随机采样1000条进行分析'}）
+1. 表结构分析：字段含义、类型、数据特征
+2. 数据质量分析：缺失值、异常值、数据分布
+3. 字段特征分析：各字段的值域范围、重复度、关键字段识别
+4. 数据洞察：发现的问题、规律、建议
+
+请用中文回答，分析要专业、详细，包含具体数据支撑。
+"""
         else:
             base_prompt += f"""
 请根据以下问题进行分析：

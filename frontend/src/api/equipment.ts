@@ -75,9 +75,10 @@ export const equipmentApi = {
     return response.data
   },
 
-  analyzeData: async (recordId: string, query?: string, useLocalModel = false) => {
+  analyzeData: async (recordId: string, tableName?: string, query?: string, useLocalModel = false) => {
     const response = await apiClient.post('/analyze', {
       record_id: recordId,
+      table_name: tableName,
       query,
       use_local_model: useLocalModel
     })

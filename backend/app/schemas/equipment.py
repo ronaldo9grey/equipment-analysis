@@ -39,6 +39,7 @@ class FileParseResult(BaseModel):
 
 class AnalyzeRequest(BaseModel):
     record_id: str
+    table_name: Optional[str] = None
     query: Optional[str] = None
     use_local_model: bool = False
 
