@@ -250,8 +250,14 @@ async def get_table_data(
     db: Session = Depends(get_db)
 ):
     """获取指定表的详细数据"""
+    record = db.query(AnalysisRecord).filter(AnalysisRecord.id == record_id).first()
+    
+    actual_record_id = record_id
+    if record and record.source_record_id:
+        actual_record_id = record.source_record_id
+    
     table_data = db.query(TableData).filter(
-        TableData.record_id == record_id,
+        TableData.record_id == actual_record_id,
         TableData.table_name == table_name
     ).first()
 
@@ -288,8 +294,14 @@ async def download_table_data(
     except ImportError:
         raise HTTPException(status_code=500, detail="pandas未安装")
     
+    record = db.query(AnalysisRecord).filter(AnalysisRecord.id == record_id).first()
+    
+    actual_record_id = record_id
+    if record and record.source_record_id:
+        actual_record_id = record.source_record_id
+    
     table_data = db.query(TableData).filter(
-        TableData.record_id == record_id,
+        TableData.record_id == actual_record_id,
         TableData.table_name == table_name
     ).first()
 
@@ -352,12 +364,13 @@ async def analyze_data(
             record_count=record.record_count,
             status="pending",
             table_name=request.table_name if request.table_name else None,
-            analysis_type="table" if request.table_name else "general"
+            analysis_type="table" if request.table_name else "general",
+            source_record_id=request.record_id if request.table_name else None
         )
         db.add(new_record)
         db.flush()
         
-        logger.info(f"新建记录: id={new_record.id}, table_name={new_record.table_name}, analysis_type={new_record.analysis_type}")
+        logger.info(f"新建记录: id={new_record.id}, table_name={new_record.table_name}, analysis_type={new_record.analysis_type}, source_record_id={new_record.source_record_id}")
 
         tables = db.query(TableData).filter(
             TableData.record_id == request.record_id

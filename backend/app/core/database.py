@@ -20,6 +20,7 @@ class AnalysisRecord(Base):
     analysis_result = Column(JSON)
     table_name = Column(String(255), nullable=True)
     analysis_type = Column(String(20), default="general")
+    source_record_id = Column(String(36), nullable=True)
     status = Column(String(20), default="pending")
     error_message = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
