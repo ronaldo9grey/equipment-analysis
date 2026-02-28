@@ -15,6 +15,7 @@ class AnalysisRecordCreate(AnalysisRecordBase):
 
 class AnalysisRecordResponse(AnalysisRecordBase):
     id: str
+    table_name: Optional[str] = None
     analysis_result: Optional[Dict[str, Any]] = None
     error_message: Optional[str] = None
     created_at: datetime

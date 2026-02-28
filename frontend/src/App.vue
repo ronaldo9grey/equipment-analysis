@@ -115,7 +115,7 @@
                       :disabled="analyzing || (selectedRecord.status !== 'completed' && selectedRecord.status !== 'analyzed')"
                       @click="handleAnalyze"
                     >
-                      {{ analyzing ? '分析中' : '文件分析' }}
+                      {{ analyzeButtonText }}
                     </el-button>
                     <el-button type="danger" size="small" text @click="handleDelete">
                       <el-icon><Delete /></el-icon>
@@ -140,7 +140,31 @@
               </div>
 
               <el-tabs v-model="activeTab" class="data-tabs">
-                <el-tab-pane label="数据表" name="tables">
+                <el-tab-pane v-if="!selectedRecord?.table_name" label="数据表" name="tables">
+                  <div class="tables-list">
+                    <el-table :data="tables" stripe size="small">
+                      <el-table-column prop="table_name" label="表名" min-width="120">
+                        <template #default="{ row }">
+                          <el-icon><Grid /></el-icon> {{ row.table_name }}
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="columns" label="字段" width="70">
+                        <template #default="{ row }">
+                          {{ row.columns?.length || 0 }}
+                        </template>
+                      </el-table-column>
+                      <el-table-column prop="row_count" label="记录" width="80" />
+                      <el-table-column label="操作" width="140">
+                        <template #default="{ row }">
+                          <el-button type="primary" link size="small" @click.stop="viewTableData(row)">查看</el-button>
+                          <el-button type="success" link size="small" @click.stop="handleAnalyzeTable(row)">数据分析</el-button>
+                        </template>
+                      </el-table-column>
+                    </el-table>
+                  </div>
+                </el-tab-pane>
+
+                <el-tab-pane v-if="selectedRecord?.table_name" label="数据集" name="data">
                   <div class="tables-list">
                     <el-table :data="tables" stripe size="small">
                       <el-table-column prop="table_name" label="表名" min-width="120">
@@ -250,6 +274,12 @@ const analyzingText = computed(() => {
   }
   return 'AI 正在分析文件中，请稍候...'
 })
+
+const analyzeButtonText = computed(() => {
+  if (analyzing.value) return '分析中'
+  return selectedRecord.value?.table_name ? '数据分析' : '文件分析'
+})
+
 const useLocalModel = ref(false)
 const records = ref<AnalysisRecord[]>([])
 const selectedRecord = ref<AnalysisRecord | null>(null)
