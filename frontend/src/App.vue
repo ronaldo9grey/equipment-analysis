@@ -23,6 +23,12 @@
       </el-header>
 
       <el-main class="main-content">
+        <div class="loading-overlay" v-if="analyzing">
+          <div class="loading-spinner">
+            <el-icon class="is-loading" :size="48"><Loading /></el-icon>
+            <div class="loading-text">AI 正在分析中，请稍候...</div>
+          </div>
+        </div>
         <div class="content-wrapper">
           <div class="left-panel">
             <el-card class="left-card" shadow="hover">
@@ -105,11 +111,9 @@
                     <el-button
                       type="primary"
                       size="small"
-                      :loading="analyzing"
-                      :disabled="selectedRecord.status !== 'completed' && selectedRecord.status !== 'analyzed'"
+                      :disabled="analyzing || (selectedRecord.status !== 'completed' && selectedRecord.status !== 'analyzed')"
                       @click="handleAnalyze"
                     >
-                      <el-icon><MagicStick /></el-icon>
                       {{ analyzing ? '分析中' : '文件分析' }}
                     </el-button>
                     <el-button type="danger" size="small" text @click="handleDelete">
@@ -224,10 +228,10 @@ import {
   Document, 
   Refresh, 
   Delete, 
-  MagicStick, 
   Grid, 
   Folder,
-  DataLine
+  DataLine,
+  Loading
 } from '@element-plus/icons-vue'
 import { equipmentApi, type AnalysisRecord, type TableInfo } from './api/equipment'
 
@@ -378,11 +382,16 @@ const handleAnalyzeTable = async (table: TableInfo) => {
       undefined,
       useLocalModel.value
     )
-    selectedRecord.value.id = result.record_id
-    selectedRecord.value.analysis_result = result.result
-    selectedRecord.value.table_name = table.table_name
+    
     ElMessage.success(`表 ${table.table_name} 分析完成`)
     activeTab.value = 'analysis'
+    
+    await loadRecords()
+    
+    const newRecord = records.value.find(r => r.id === result.record_id)
+    if (newRecord) {
+      selectedRecord.value = newRecord
+    }
   } catch (error: any) {
     console.error('分析错误:', error)
     ElMessage.error(error.response?.data?.detail || '分析失败')
@@ -876,5 +885,44 @@ onMounted(() => {
   .file-name {
     font-size: 13px;
   }
+}
+
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+  backdrop-filter: blur(4px);
+}
+
+.loading-spinner {
+  background: white;
+  padding: 40px 60px;
+  border-radius: 12px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  text-align: center;
+}
+
+.loading-spinner .el-icon {
+  color: #409eff;
+  animation: spin 1.5s linear infinite;
+}
+
+.loading-text {
+  margin-top: 16px;
+  font-size: 16px;
+  color: #303133;
+  font-weight: 500;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
 }
 </style>

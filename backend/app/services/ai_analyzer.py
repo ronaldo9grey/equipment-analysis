@@ -49,8 +49,21 @@ class AIAnalyzer:
                 "result": None
             }
 
-    def _prepare_context(self, data: Dict[str, Any]) -> str:
+    def _prepare_context(self, data: Dict[str, Any], analysis_type: str = "general") -> str:
         """准备分析上下文"""
+        
+        if analysis_type == "table":
+            table_data = data.get("data", [])
+            context = {
+                "file_name": data.get("file_name"),
+                "table_name": data.get("table_name"),
+                "row_count": data.get("row_count", 0),
+                "columns": data.get("columns", []),
+                "data_mode": data.get("data_mode", "采样"),
+                "sample_data": table_data[:20] if table_data else []
+            }
+            return json.dumps(context, ensure_ascii=False, indent=2)
+        
         tables_info = []
 
         for table in data.get("tables", []):
@@ -77,7 +90,7 @@ class AIAnalyzer:
         analysis_type: str
     ) -> str:
         """构建分析提示词"""
-        context = self._prepare_context(data)
+        context = self._prepare_context(data, analysis_type)
 
         base_prompt = f"""
 ## 数据概览
@@ -134,9 +147,7 @@ class AIAnalyzer:
             columns = data.get("columns", [])
             data_mode = data.get("data_mode", "采样")
             base_prompt += f"""
-请对表「{table_name}」进行详细数据分析：
-- 当前表共有 {row_count} 条记录
-- 数据模式：{data_mode}（{'数据量小于1000条，已使用全部数据' if data_mode == '全量' else '数据量大于1000条，已随机采样1000条进行分析'}）
+请对表「{table_name}」（共 {row_count} 条记录，数据模式：{data_mode}）进行详细数据分析：
 1. 表结构分析：字段含义、类型、数据特征
 2. 数据质量分析：缺失值、异常值、数据分布
 3. 字段特征分析：各字段的值域范围、重复度、关键字段识别
