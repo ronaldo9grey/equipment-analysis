@@ -110,7 +110,7 @@
                       @click="handleAnalyze"
                     >
                       <el-icon><MagicStick /></el-icon>
-                      {{ analyzing ? '分析中' : 'AI分析' }}
+                      {{ analyzing ? '分析中' : '文件分析' }}
                     </el-button>
                     <el-button type="danger" size="small" text @click="handleDelete">
                       <el-icon><Delete /></el-icon>
@@ -152,7 +152,7 @@
                       <el-table-column label="操作" width="140">
                         <template #default="{ row }">
                           <el-button type="primary" link size="small" @click.stop="viewTableData(row)">查看</el-button>
-                          <el-button type="success" link size="small" @click.stop="handleAnalyzeTable(row)">AI分析</el-button>
+                          <el-button type="success" link size="small" @click.stop="handleAnalyzeTable(row)">数据分析</el-button>
                         </template>
                       </el-table-column>
                     </el-table>
@@ -383,16 +383,6 @@ const handleAnalyzeTable = async (table: TableInfo) => {
     selectedRecord.value.table_name = table.table_name
     ElMessage.success(`表 ${table.table_name} 分析完成`)
     activeTab.value = 'analysis'
-    
-    currentTable.value = table
-    tableData.value = table.preview || []
-    currentTableColumns.value = table.columns || []
-    tablePagination.value = {
-      page: 1,
-      pageSize: 100,
-      total: table.row_count || 0
-    }
-    tableDialogVisible.value = true
   } catch (error: any) {
     console.error('分析错误:', error)
     ElMessage.error(error.response?.data?.detail || '分析失败')
@@ -447,7 +437,17 @@ const getStatusText = (status: string) => {
   return map[status] || status
 }
 
-const formatTime = (time: string) => new Date(time).toLocaleDateString('zh-CN')
+const formatTime = (time: string) => {
+  const date = new Date(time)
+  return date.toLocaleString('zh-CN', {
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit'
+  })
+}
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return bytes + ' B'
@@ -558,12 +558,14 @@ onMounted(() => {
   padding: 16px;
   height: calc(100vh - 60px);
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .content-wrapper {
   display: flex;
   height: 100%;
   gap: 16px;
+  overflow: hidden;
 }
 
 .left-panel {
@@ -577,7 +579,14 @@ onMounted(() => {
 
 .left-card {
   flex: 0 0 auto;
-  min-height: 320px;
+  min-height: 280px;
+  max-height: 320px;
+}
+
+.records-card {
+  flex: 1;
+  overflow: hidden;
+  min-height: 150px;
 }
 
 .right-panel {
@@ -672,12 +681,6 @@ onMounted(() => {
   width: 100%;
 }
 
-.records-card {
-  flex: 1;
-  overflow: hidden;
-  min-height: 200px;
-}
-
 .records-card :deep(.el-card__body) {
   padding: 0;
   max-height: 100%;
@@ -747,7 +750,7 @@ onMounted(() => {
 
 .data-tabs :deep(.el-tab-pane) {
   height: 100%;
-  overflow: hidden;
+  overflow-y: auto;
 }
 
 .tables-list {
@@ -756,7 +759,9 @@ onMounted(() => {
 }
 
 .analysis-result {
-  height: 100%;
+  flex: 1;
+  height: auto;
+  min-height: 200px;
   overflow-y: auto;
   padding: 16px;
   background: #fff;
