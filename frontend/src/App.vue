@@ -23,80 +23,78 @@
       </el-header>
 
       <el-main class="main-content">
-        <el-row :gutter="16" class="content-row">
-          <el-col :span="7">
-            <div class="left-panel">
-              <el-card class="left-card" shadow="hover">
-                <template #header>
-                  <div class="card-header">
-                    <span><el-icon><UploadFilled /></el-icon> 上传数据</span>
-                  </div>
+        <div class="content-wrapper">
+          <div class="left-panel">
+            <el-card class="left-card" shadow="hover">
+              <template #header>
+                <div class="card-header">
+                  <span><el-icon><UploadFilled /></el-icon> 上传数据</span>
+                </div>
+              </template>
+              <el-upload
+                class="upload-area"
+                drag
+                :action="uploadUrl"
+                :auto-upload="false"
+                :on-change="handleFileChange"
+                :on-success="handleUploadSuccess"
+                :on-error="handleUploadError"
+                :limit="1"
+                :accept="acceptTypes"
+              >
+                <el-icon class="upload-icon"><upload-filled /></el-icon>
+                <div class="upload-text">
+                  拖拽或<em>点击上传</em>
+                </div>
+                <template #tip>
+                  <div class="upload-tip">支持 MDB、ACCDB、SQL</div>
                 </template>
-                <el-upload
-                  class="upload-area"
-                  drag
-                  :action="uploadUrl"
-                  :auto-upload="false"
-                  :on-change="handleFileChange"
-                  :on-success="handleUploadSuccess"
-                  :on-error="handleUploadError"
-                  :limit="1"
-                  :accept="acceptTypes"
-                >
-                  <el-icon class="upload-icon"><upload-filled /></el-icon>
-                  <div class="upload-text">
-                    拖拽或<em>点击上传</em>
-                  </div>
-                  <template #tip>
-                    <div class="upload-tip">支持 MDB、ACCDB、SQL</div>
-                  </template>
-                </el-upload>
-                <el-button
-                  type="primary"
-                  :loading="uploading"
-                  :disabled="!selectedFile"
-                  @click="handleUpload"
-                  class="upload-btn"
-                >
-                  {{ uploading ? '解析中...' : '开始解析' }}
-                </el-button>
-              </el-card>
+              </el-upload>
+              <el-button
+                type="primary"
+                :loading="uploading"
+                :disabled="!selectedFile"
+                @click="handleUpload"
+                class="upload-btn"
+              >
+                {{ uploading ? '解析中...' : '开始解析' }}
+              </el-button>
+            </el-card>
 
-              <el-card class="records-card" shadow="hover" v-if="records.length > 0">
-                <template #header>
-                  <div class="card-header">
-                    <span><el-icon><Document /></el-icon> 历史记录</span>
-                    <el-button text @click="loadRecords">
-                      <el-icon><Refresh /></el-icon>
-                    </el-button>
+            <el-card class="records-card" shadow="hover" v-if="records.length > 0">
+              <template #header>
+                <div class="card-header">
+                  <span><el-icon><Document /></el-icon> 历史记录</span>
+                  <el-button text @click="loadRecords">
+                    <el-icon><Refresh /></el-icon>
+                  </el-button>
+                </div>
+              </template>
+              <div class="records-list">
+                <div
+                  v-for="record in records"
+                  :key="record.id"
+                  class="record-item"
+                  :class="{ active: selectedRecord?.id === record.id }"
+                  @click="selectRecord(record)"
+                >
+                  <div class="record-name">
+                    <el-icon><Document /></el-icon>
+                    {{ record.file_name }}
                   </div>
-                </template>
-                <div class="records-list">
-                  <div
-                    v-for="record in records"
-                    :key="record.id"
-                    class="record-item"
-                    :class="{ active: selectedRecord?.id === record.id }"
-                    @click="selectRecord(record)"
-                  >
-                    <div class="record-name">
-                      <el-icon><Document /></el-icon>
-                      {{ record.file_name }}
-                    </div>
-                    <div class="record-info">
-                      <el-tag size="small" :type="getStatusType(record.status)" effect="dark">
-                        {{ getStatusText(record.status) }}
-                      </el-tag>
-                      <span class="record-time">{{ formatTime(record.created_at) }}</span>
-                    </div>
+                  <div class="record-info">
+                    <el-tag size="small" :type="getStatusType(record.status)" effect="dark">
+                      {{ getStatusText(record.status) }}
+                    </el-tag>
+                    <span class="record-time">{{ formatTime(record.created_at) }}</span>
                   </div>
                 </div>
-              </el-card>
-            </div>
-          </el-col>
+              </div>
+            </el-card>
+          </div>
 
-          <el-col :span="17">
-            <el-card class="right-card" shadow="hover" v-if="selectedRecord">
+          <div class="right-panel" v-if="selectedRecord">
+            <el-card class="right-card" shadow="hover">
               <template #header>
                 <div class="card-header card-header-responsive">
                   <span class="file-name">
@@ -167,16 +165,18 @@
                 </el-tab-pane>
               </el-tabs>
             </el-card>
+          </div>
 
-            <el-card v-else class="empty-card" shadow="hover">
+          <div v-else class="right-panel">
+            <div class="empty-card">
               <el-empty description="请上传数据文件或选择历史记录">
                 <template #image>
                   <el-icon :size="60" color="#dcdfe6"><DataLine /></el-icon>
                 </template>
               </el-empty>
-            </el-card>
-          </el-col>
-        </el-row>
+            </div>
+          </div>
+        </div>
       </el-main>
     </el-container>
 
@@ -501,15 +501,10 @@ onMounted(() => {
   box-sizing: border-box;
 }
 
-.content-row {
-  height: 100%;
+.content-wrapper {
   display: flex;
+  height: 100%;
   gap: 16px;
-}
-
-.content-row > .el-col {
-  min-width: 0;
-  flex: 0 0 auto;
 }
 
 .left-panel {
@@ -518,6 +513,7 @@ onMounted(() => {
   display: flex;
   flex-direction: column;
   gap: 12px;
+  overflow: hidden;
 }
 
 .left-card {
@@ -525,17 +521,22 @@ onMounted(() => {
   min-height: 320px;
 }
 
-.left-card, .right-card {
-  height: 100%;
-  border-radius: 8px;
+.right-panel {
+  flex: 1;
   display: flex;
   flex-direction: column;
-  box-sizing: border-box;
+  overflow: hidden;
 }
 
-.right-card {
-  flex: 1;
-  min-width: 600px;
+.right-panel .right-card {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.left-card, .right-card {
+  border-radius: 8px;
+  box-sizing: border-box;
 }
 
 .left-card :deep(.el-card__body),
@@ -785,9 +786,7 @@ onMounted(() => {
 }
 
 .empty-card {
-  height: 100%;
-  min-height: 500px;
-  min-width: 600px;
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
