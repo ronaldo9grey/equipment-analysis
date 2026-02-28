@@ -376,13 +376,18 @@ async def analyze_data(
 
         db.commit()
 
-        return AnalyzeResponse(
-            record_id=new_record.id,
-            status=new_record.status,
-            result=analysis_result.get("result"),
-            message=analysis_result.get("message", "分析完成")
-        )
+        result_data = analysis_result.get("result")
+        logger.info(f"准备返回响应: record_id={new_record.id}, status={new_record.status}, result_keys={list(result_data.keys()) if result_data else None}")
 
+        response_data = {
+            "record_id": new_record.id,
+            "status": new_record.status,
+            "result": result_data,
+            "message": analysis_result.get("message", "分析完成")
+        }
+        
+        from fastapi.responses import JSONResponse
+        return JSONResponse(content=response_data)
     except HTTPException:
         raise
     except Exception as e:
