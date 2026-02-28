@@ -5,26 +5,27 @@
         <div class="header-content">
           <div class="header-title">
             <el-icon class="header-icon"><DataAnalysis /></el-icon>
-            <h1>设备运行数据分析系统</h1>
+            <h1>设备运行数据分析</h1>
           </div>
           <div class="header-actions">
             <el-switch
               v-model="useLocalModel"
-              active-text="本地模型"
+              active-text="本地"
               inactive-text="DeepSeek"
               @change="handleModelChange"
+              class="model-switch"
             />
           </div>
         </div>
       </el-header>
 
       <el-main class="main-content">
-        <el-row :gutter="20" class="content-row">
-          <el-col :span="8">
+        <el-row :gutter="16" class="content-row">
+          <el-col :xs="24" :sm="24" :md="8" :lg="7">
             <el-card class="left-card" shadow="hover">
               <template #header>
                 <div class="card-header">
-                  <span><el-icon><UploadFilled /></el-icon> 上传数据文件</span>
+                  <span><el-icon><UploadFilled /></el-icon> 上传数据</span>
                 </div>
               </template>
               <el-upload
@@ -40,12 +41,10 @@
               >
                 <el-icon class="upload-icon"><upload-filled /></el-icon>
                 <div class="upload-text">
-                  拖拽文件到此处或<em>点击上传</em>
+                  拖拽或<em>点击上传</em>
                 </div>
                 <template #tip>
-                  <div class="upload-tip">
-                    支持 MDB、ACCDB、SQL、BAK 文件
-                  </div>
+                  <div class="upload-tip">支持 MDB、ACCDB、SQL</div>
                 </template>
               </el-upload>
               <el-button
@@ -91,25 +90,26 @@
             </el-card>
           </el-col>
 
-          <el-col :span="16">
+          <el-col :xs="24" :sm="24" :md="16" :lg="17">
             <el-card class="right-card" shadow="hover" v-if="selectedRecord">
               <template #header>
-                <div class="card-header">
-                  <span>
+                <div class="card-header card-header-responsive">
+                  <span class="file-name">
                     <el-icon><Folder /></el-icon> 
-                    数据详情 - {{ selectedRecord.file_name }}
+                    {{ selectedRecord.file_name }}
                   </span>
                   <div class="header-btns">
                     <el-button
                       type="primary"
+                      size="small"
                       :loading="analyzing"
                       :disabled="selectedRecord.status !== 'completed' && selectedRecord.status !== 'analyzed'"
                       @click="handleAnalyze"
                     >
                       <el-icon><MagicStick /></el-icon>
-                      {{ analyzing ? '分析中...' : 'AI智能分析' }}
+                      {{ analyzing ? '分析中' : 'AI分析' }}
                     </el-button>
-                    <el-button type="danger" text @click="handleDelete">
+                    <el-button type="danger" size="small" text @click="handleDelete">
                       <el-icon><Delete /></el-icon>
                     </el-button>
                   </div>
@@ -117,18 +117,16 @@
               </template>
 
               <div class="file-info">
-                <el-descriptions :column="4" border>
-                  <el-descriptions-item label="文件大小">
-                    <el-icon><Files /></el-icon> {{ formatSize(selectedRecord.file_size) }}
-                  </el-descriptions-item>
-                  <el-descriptions-item label="文件类型">
+                <el-descriptions :column="2" border size="small">
+                  <el-descriptions-item label="大小">{{ formatSize(selectedRecord.file_size) }}</el-descriptions-item>
+                  <el-descriptions-item label="类型">
                     <el-tag size="small">{{ selectedRecord.file_type?.toUpperCase() }}</el-tag>
                   </el-descriptions-item>
-                  <el-descriptions-item label="数据表数">
-                    <el-tag type="info">{{ selectedRecord.table_count }} 个</el-tag>
+                  <el-descriptions-item label="表数">
+                    <el-tag type="info" size="small">{{ selectedRecord.table_count }}</el-tag>
                   </el-descriptions-item>
-                  <el-descriptions-item label="总记录数">
-                    <el-tag type="success">{{ selectedRecord.record_count }} 条</el-tag>
+                  <el-descriptions-item label="记录">
+                    <el-tag type="success" size="small">{{ selectedRecord.record_count }}</el-tag>
                   </el-descriptions-item>
                 </el-descriptions>
               </div>
@@ -136,49 +134,39 @@
               <el-tabs v-model="activeTab" class="data-tabs">
                 <el-tab-pane label="数据表" name="tables">
                   <div class="tables-list">
-                    <el-table :data="tables" stripe height="100%">
-                      <el-table-column prop="table_name" label="表名" min-width="150">
+                    <el-table :data="tables" stripe size="small">
+                      <el-table-column prop="table_name" label="表名" min-width="120">
                         <template #default="{ row }">
                           <el-icon><Grid /></el-icon> {{ row.table_name }}
                         </template>
                       </el-table-column>
-                      <el-table-column prop="columns" label="字段数" width="100">
+                      <el-table-column prop="columns" label="字段" width="70">
                         <template #default="{ row }">
-                          <el-tag size="small" type="info">{{ row.columns?.length || 0 }}</el-tag>
+                          {{ row.columns?.length || 0 }}
                         </template>
                       </el-table-column>
-                      <el-table-column prop="row_count" label="记录数" width="100">
+                      <el-table-column prop="row_count" label="记录" width="80" />
+                      <el-table-column label="操作" width="80">
                         <template #default="{ row }">
-                          <el-tag size="small" type="success">{{ row.row_count }}</el-tag>
-                        </template>
-                      </el-table-column>
-                      <el-table-column label="操作" width="120">
-                        <template #default="{ row }">
-                          <el-button type="primary" link @click.stop="viewTableData(row)">
-                            <el-icon><View /></el-icon> 查看
-                          </el-button>
+                          <el-button type="primary" link size="small" @click.stop="viewTableData(row)">查看</el-button>
                         </template>
                       </el-table-column>
                     </el-table>
                   </div>
                 </el-tab-pane>
 
-                <el-tab-pane label="AI分析结果" name="analysis">
+                <el-tab-pane label="AI分析" name="analysis">
                   <div class="analysis-result" v-if="selectedRecord.analysis_result?.content" v-html="renderMarkdown(selectedRecord.analysis_result.content)">
                   </div>
-                  <el-empty v-else description="暂无分析结果，请点击右上角按钮进行分析">
-                    <template #image>
-                      <el-icon :size="60" color="#909399"><MagicStick /></el-icon>
-                    </template>
-                  </el-empty>
+                  <el-empty v-else description="暂无分析结果" />
                 </el-tab-pane>
               </el-tabs>
             </el-card>
 
             <el-card v-else class="empty-card" shadow="hover">
-              <el-empty description="请先上传数据文件或选择历史记录">
+              <el-empty description="请上传数据文件或选择历史记录">
                 <template #image>
-                  <el-icon :size="100" color="#dcdfe6"><DataLine /></el-icon>
+                  <el-icon :size="60" color="#dcdfe6"><DataLine /></el-icon>
                 </template>
               </el-empty>
             </el-card>
@@ -187,14 +175,14 @@
       </el-main>
     </el-container>
 
-    <el-dialog v-model="tableDialogVisible" :title="currentTable?.table_name" width="90%" top="5vh">
-      <el-table :data="tableData" stripe height="60vh" v-if="tableData.length > 0">
+    <el-dialog v-model="tableDialogVisible" :title="currentTable?.table_name" width="90%">
+      <el-table :data="tableData" stripe size="small" max-height="50vh" v-if="tableData.length > 0">
         <el-table-column
           v-for="col in currentTableColumns"
           :key="col"
           :prop="col"
           :label="col"
-          min-width="150"
+          min-width="120"
           show-overflow-tooltip
         />
       </el-table>
@@ -203,10 +191,10 @@
         v-model:current-page="tablePagination.page"
         v-model:page-size="tablePagination.pageSize"
         :total="tablePagination.total"
-        layout="total, sizes, prev, pager, next, jumper"
-        :page-sizes="[50, 100, 200]"
+        layout="total, prev, pager, next"
+        :page-sizes="[50, 100]"
         @current-change="loadTableData"
-        @size-change="loadTableData"
+        small
       />
       <el-empty v-else description="暂无数据" />
     </el-dialog>
@@ -277,13 +265,9 @@ const handleUpload = async () => {
   }
 }
 
-const handleUploadSuccess = () => {
-  ElMessage.success('上传成功')
-}
+const handleUploadSuccess = () => ElMessage.success('上传成功')
 
-const handleUploadError = (error: any) => {
-  ElMessage.error(error.message || '上传失败')
-}
+const handleUploadError = (error: any) => ElMessage.error(error.message || '上传失败')
 
 const loadRecords = async () => {
   try {
@@ -337,7 +321,6 @@ const loadTableData = async () => {
 const handleAnalyze = async () => {
   if (!selectedRecord.value) return
 
-  console.log('分析按钮点击', selectedRecord.value.id, selectedRecord.value.status)
   analyzing.value = true
   try {
     const result = await equipmentApi.analyzeData(
@@ -379,7 +362,7 @@ const handleDelete = async () => {
 }
 
 const handleModelChange = (value: boolean) => {
-  ElMessage.info(value ? '已切换到本地模型' : '已切换到DeepSeek模型')
+  ElMessage.info(value ? '本地模型' : 'DeepSeek模型')
 }
 
 const getStatusType = (status: string) => {
@@ -402,9 +385,7 @@ const getStatusText = (status: string) => {
   return map[status] || status
 }
 
-const formatTime = (time: string) => {
-  return new Date(time).toLocaleString('zh-CN')
-}
+const formatTime = (time: string) => new Date(time).toLocaleDateString('zh-CN')
 
 const formatSize = (bytes: number) => {
   if (bytes < 1024) return bytes + ' B'
@@ -423,10 +404,7 @@ const renderMarkdown = (text: string): string => {
   
   html = html.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>')
-  
   html = html.replace(/^- (.*$)/gim, '<li class="md-li">$1</li>')
-  html = html.replace(/^(\d+)\. (.*$)/gim, '<li class="md-li">$2</li>')
-  
   html = html.replace(/`([^`]+)`/g, '<code class="md-code">$1</code>')
   
   html = html.replace(/\n\n/g, '</p><p class="md-p">')
@@ -449,14 +427,14 @@ onMounted(() => {
 <style scoped>
 .app-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, #f5f7fa 0%, #e4e7ed 100%);
+  background: #f5f7fa;
 }
 
 .header {
-  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   color: white;
-  padding: 0 24px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+  padding: 0 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
 .header-content {
@@ -464,100 +442,96 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
   height: 100%;
-  max-width: 1600px;
-  margin: 0 auto;
 }
 
 .header-title {
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 }
 
 .header-icon {
-  font-size: 28px;
+  font-size: 20px;
   color: #409eff;
 }
 
 .header-title h1 {
   margin: 0;
-  font-size: 22px;
+  font-size: 16px;
   font-weight: 600;
-  background: linear-gradient(90deg, #fff 0%, #409eff 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
 }
 
-.header-actions {
-  display: flex;
-  align-items: center;
+.model-switch {
+  font-size: 12px;
 }
 
 .main-content {
-  padding: 20px;
-  max-width: 1600px;
-  margin: 0 auto;
+  padding: 12px;
 }
 
 .content-row {
-  height: calc(100vh - 80px);
+  min-height: calc(100vh - 60px);
 }
 
 .left-card, .right-card {
   height: 100%;
-  display: flex;
-  flex-direction: column;
+  border-radius: 8px;
 }
 
 .left-card :deep(.el-card__body),
 .right-card :deep(.el-card__body) {
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
+  padding: 12px;
 }
 
 .card-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 14px;
   font-weight: 600;
-  color: #303133;
 }
 
 .card-header span {
   display: flex;
   align-items: center;
+  gap: 6px;
+}
+
+.card-header-responsive {
+  flex-wrap: wrap;
   gap: 8px;
 }
 
+.file-name {
+  flex: 1;
+  min-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.header-btns {
+  display: flex;
+  gap: 4px;
+}
+
 .upload-area {
-  flex: 0 0 auto;
-  margin-bottom: 16px;
-}
-
-.upload-area :deep(.el-upload-dragger) {
-  padding: 40px 20px;
-  border-radius: 12px;
-  border: 2px dashed #dcdfe6;
-  background: #fafafa;
-  transition: all 0.3s;
-}
-
-.upload-area :deep(.el-upload-dragger:hover) {
-  border-color: #409eff;
-  background: #ecf5ff;
-}
-
-.upload-icon {
-  font-size: 48px;
-  color: #409eff;
   margin-bottom: 12px;
 }
 
+.upload-area :deep(.el-upload-dragger) {
+  padding: 20px 10px;
+  border-radius: 8px;
+}
+
+.upload-icon {
+  font-size: 32px;
+  color: #409eff;
+  margin-bottom: 8px;
+}
+
 .upload-text {
-  color: #606266;
-  font-size: 14px;
+  font-size: 13px;
 }
 
 .upload-text em {
@@ -566,39 +540,28 @@ onMounted(() => {
 }
 
 .upload-tip {
-  color: #909399;
-  font-size: 12px;
-  margin-top: 8px;
+  font-size: 11px;
+  margin-top: 6px;
 }
 
 .upload-btn {
   width: 100%;
-  height: 44px;
-  font-size: 16px;
-  border-radius: 8px;
 }
 
 .records-card {
-  flex: 1;
-  margin-top: 16px;
-  overflow: hidden;
-}
-
-.records-card :deep(.el-card__body) {
-  padding: 0;
-  max-height: calc(100% - 55px);
+  margin-top: 12px;
 }
 
 .records-list {
-  max-height: 400px;
+  max-height: 300px;
   overflow-y: auto;
 }
 
 .record-item {
-  padding: 14px 16px;
+  padding: 10px 12px;
   border-bottom: 1px solid #ebeef5;
   cursor: pointer;
-  transition: all 0.3s;
+  transition: all 0.2s;
 }
 
 .record-item:hover {
@@ -607,17 +570,16 @@ onMounted(() => {
 
 .record-item.active {
   background-color: #ecf5ff;
-  border-left: 4px solid #409eff;
-  padding-left: 12px;
+  border-left: 3px solid #409eff;
+  padding-left: 9px;
 }
 
 .record-name {
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: #303133;
-  margin-bottom: 8px;
+  gap: 6px;
+  font-size: 13px;
+  margin-bottom: 6px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -630,123 +592,89 @@ onMounted(() => {
 }
 
 .record-time {
-  font-size: 12px;
+  font-size: 11px;
   color: #909399;
 }
 
-.header-btns {
-  display: flex;
-  gap: 8px;
-}
-
 .file-info {
-  margin-bottom: 16px;
-}
-
-.file-info :deep(.el-descriptions__label) {
-  font-weight: 500;
-  background: #fafafa;
+  margin-bottom: 12px;
 }
 
 .data-tabs {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
-
-.data-tabs :deep(.el-tabs__content) {
-  flex: 1;
-  overflow: hidden;
-}
-
-.data-tabs :deep(.el-tab-pane) {
-  height: 100%;
-  overflow: hidden;
+  margin-top: 12px;
 }
 
 .tables-list {
-  height: 100%;
+  max-height: 35vh;
   overflow: auto;
 }
 
 .analysis-result {
-  height: 100%;
+  max-height: 50vh;
   overflow-y: auto;
-  padding: 20px;
+  padding: 12px;
   background: #fff;
-  border-radius: 8px;
-  border: 1px solid #ebeef5;
+  border-radius: 6px;
+  font-size: 13px;
 }
 
 .analysis-result :deep(.md-h1) {
-  font-size: 24px;
-  color: #1a1a2e;
-  margin: 20px 0 16px;
-  padding-bottom: 8px;
+  font-size: 18px;
+  margin: 12px 0 10px;
+  padding-bottom: 6px;
   border-bottom: 2px solid #409eff;
 }
 
 .analysis-result :deep(.md-h2) {
-  font-size: 20px;
+  font-size: 15px;
   color: #303133;
-  margin: 18px 0 14px;
-  padding-left: 12px;
-  border-left: 4px solid #67c23a;
+  margin: 10px 0 8px;
+  padding-left: 8px;
+  border-left: 3px solid #67c23a;
 }
 
 .analysis-result :deep(.md-h3) {
-  font-size: 16px;
+  font-size: 14px;
   color: #409eff;
-  margin: 14px 0 10px;
+  margin: 8px 0 6px;
 }
 
-.analysis-result :deep(.md-p) {
-  line-height: 1.8;
-  color: #606266;
-  margin: 8px 0;
-}
-
+.analysis-result :deep(.md-p),
 .analysis-result :deep(.md-li) {
-  line-height: 1.8;
+  line-height: 1.6;
   color: #606266;
   margin: 4px 0;
-  padding-left: 8px;
 }
 
 .analysis-result :deep(strong) {
   color: #e6a23c;
-  font-weight: 600;
 }
 
 .analysis-result :deep(.md-code) {
   background: #f5f7fa;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-family: 'Monaco', 'Menlo', monospace;
-  font-size: 13px;
-  color: #c7254e;
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-size: 12px;
 }
 
 .empty-card {
-  height: calc(100vh - 140px);
+  min-height: 300px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #fff;
-  border-radius: 12px;
 }
 
-:deep(.el-dialog) {
-  border-radius: 12px;
-}
-
-:deep(.el-dialog__header) {
-  border-bottom: 1px solid #ebeef5;
-  padding: 16px 20px;
-}
-
-:deep(.el-dialog__body) {
-  padding: 20px;
+@media (max-width: 768px) {
+  .header-title h1 {
+    font-size: 14px;
+  }
+  
+  .main-content {
+    padding: 8px;
+  }
+  
+  .file-name {
+    font-size: 13px;
+  }
 }
 </style>
