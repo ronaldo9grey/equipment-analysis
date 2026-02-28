@@ -76,6 +76,23 @@ export const equipmentApi = {
     return response.data
   },
 
+  downloadTableData: async (recordId: string, tableName: string) => {
+    const response = await apiClient.get(`/records/${recordId}/tables/${tableName}/download`, {
+      responseType: 'blob'
+    })
+    const blob = new Blob([response.data], { 
+      type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' 
+    })
+    const url = window.URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `${tableName}.xlsx`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    window.URL.revokeObjectURL(url)
+  },
+
   analyzeData: async (recordId: string, tableName?: string, query?: string, useLocalModel = false) => {
     const response = await apiClient.post('/analyze', {
       record_id: recordId,

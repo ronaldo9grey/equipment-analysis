@@ -106,7 +106,7 @@
                 <div class="card-header card-header-responsive">
                   <span class="file-name">
                     <el-icon><Folder /></el-icon> 
-                    {{ selectedRecord.file_name }}
+                    {{ selectedRecord.table_name || selectedRecord.file_name }}
                   </span>
                   <div class="header-btns">
                     <el-button
@@ -165,26 +165,17 @@
                 </el-tab-pane>
 
                 <el-tab-pane v-if="selectedRecord?.table_name" label="数据集" name="data">
+                  <div class="dataset-header">
+                    <el-button type="primary" size="small" @click="handleDownloadData">
+                      <el-icon><Download /></el-icon> 导出Excel
+                    </el-button>
+                    <span class="dataset-count">共 {{ tableDataForView.length }} 条数据</span>
+                  </div>
                   <div class="tables-list">
-                    <el-table :data="tables" stripe size="small">
-                      <el-table-column prop="table_name" label="表名" min-width="120">
-                        <template #default="{ row }">
-                          <el-icon><Grid /></el-icon> {{ row.table_name }}
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="columns" label="字段" width="70">
-                        <template #default="{ row }">
-                          {{ row.columns?.length || 0 }}
-                        </template>
-                      </el-table-column>
-                      <el-table-column prop="row_count" label="记录" width="80" />
-                      <el-table-column label="操作" width="140">
-                        <template #default="{ row }">
-                          <el-button type="primary" link size="small" @click.stop="viewTableData(row)">查看</el-button>
-                          <el-button type="success" link size="small" @click.stop="handleAnalyzeTable(row)">数据分析</el-button>
-                        </template>
-                      </el-table-column>
+                    <el-table :data="tableDataForView" stripe size="small" max-height="500">
+                      <el-table-column v-for="col in tableColumnsForView" :key="col" :prop="col" :label="col" min-width="120" show-overflow-tooltip />
                     </el-table>
+                    <el-empty v-if="tableDataForView.length === 0" description="暂无数据" />
                   </div>
                 </el-tab-pane>
 
@@ -256,7 +247,8 @@ import {
   Grid, 
   Folder,
   DataLine,
-  Loading
+  Loading,
+  Download
 } from '@element-plus/icons-vue'
 import { equipmentApi, type AnalysisRecord, type TableInfo } from './api/equipment'
 
@@ -284,6 +276,8 @@ const useLocalModel = ref(false)
 const records = ref<AnalysisRecord[]>([])
 const selectedRecord = ref<AnalysisRecord | null>(null)
 const tables = ref<TableInfo[]>([])
+const tableDataForView = ref<any[]>([])
+const tableColumnsForView = ref<string[]>([])
 const activeTab = ref('tables')
 
 const tableDialogVisible = ref(false)
@@ -334,22 +328,24 @@ const loadRecords = async () => {
 
 const selectRecord = async (record: AnalysisRecord) => {
   selectedRecord.value = record
-  if (record.status === 'completed' || record.status === 'analyzed') {
-    await loadTables(record.id)
-    
-    if (record.table_name && tables.value.length > 0) {
-      const targetTable = tables.value.find(t => t.table_name === record.table_name)
-      if (targetTable) {
-        currentTable.value = targetTable
-        tableData.value = targetTable.preview || []
-        currentTableColumns.value = targetTable.columns || []
-        tablePagination.value = {
-          page: 1,
-          pageSize: 100,
-          total: targetTable.row_count || 0
-        }
-        tableDialogVisible.value = true
+  
+  if (record.table_name) {
+    activeTab.value = 'data'
+    tableDataForView.value = []
+    tableColumnsForView.value = []
+    if (record.status === 'completed' || record.status === 'analyzed') {
+      try {
+        const result = await equipmentApi.getTableData(record.id, record.table_name, 1, 1000)
+        tableDataForView.value = result.data || []
+        tableColumnsForView.value = result.columns || []
+      } catch (error) {
+        console.error('加载表数据失败:', error)
       }
+    }
+  } else {
+    activeTab.value = 'tables'
+    if (record.status === 'completed' || record.status === 'analyzed') {
+      await loadTables(record.id)
     }
   }
 }
@@ -460,6 +456,17 @@ const handleDelete = async () => {
     if (error !== 'cancel') {
       ElMessage.error('删除失败')
     }
+  }
+}
+
+const handleDownloadData = async () => {
+  if (!selectedRecord.value?.table_name) return
+  
+  try {
+    await equipmentApi.downloadTableData(selectedRecord.value.id, selectedRecord.value.table_name)
+    ElMessage.success('下载成功')
+  } catch (error: any) {
+    ElMessage.error('下载失败')
   }
 }
 
@@ -806,6 +813,21 @@ onMounted(() => {
 .tables-list {
   height: 100%;
   overflow: auto;
+}
+
+.dataset-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.dataset-count {
+  color: #909399;
+  font-size: 13px;
 }
 
 .analysis-result {

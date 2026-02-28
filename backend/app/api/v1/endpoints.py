@@ -1,5 +1,6 @@
 from fastapi import APIRouter, UploadFile, File, Depends, HTTPException, Form
 from fastapi.responses import JSONResponse
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 from typing import List, Optional
 import os
@@ -7,6 +8,7 @@ import uuid
 import shutil
 from datetime import datetime
 import logging
+import io
 
 from app.core.database import get_db, init_db, AnalysisRecord, TableData
 from app.core.config import settings
@@ -272,6 +274,48 @@ async def get_table_data(
         "total_pages": (table_data.row_count + page_size - 1) // page_size,
         "data": page_data
     }
+
+
+@router.get("/records/{record_id}/tables/{table_name}/download")
+async def download_table_data(
+    record_id: str,
+    table_name: str,
+    db: Session = Depends(get_db)
+):
+    """下载表数据为Excel文件"""
+    try:
+        import pandas as pd
+    except ImportError:
+        raise HTTPException(status_code=500, detail="pandas未安装")
+    
+    table_data = db.query(TableData).filter(
+        TableData.record_id == record_id,
+        TableData.table_name == table_name
+    ).first()
+
+    if not table_data:
+        raise HTTPException(status_code=404, detail="表不存在")
+
+    all_data = table_data.data or []
+    
+    if not all_data:
+        raise HTTPException(status_code=404, detail="表中无数据")
+
+    df = pd.DataFrame(all_data)
+    
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name=table_name[:30])
+    
+    output.seek(0)
+    
+    filename = f"{table_name}_{record_id[:8]}.xlsx"
+    
+    return StreamingResponse(
+        iter([output.getvalue()]),
+        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+    )
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
