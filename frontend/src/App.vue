@@ -26,7 +26,8 @@
         <div class="loading-overlay" v-if="analyzing">
           <div class="loading-spinner">
             <el-icon class="is-loading" :size="48"><Loading /></el-icon>
-            <div class="loading-text">AI 正在分析中，请稍候...</div>
+            <div class="loading-text">{{ analyzingText }}</div>
+            <div class="loading-subtext">{{ analyzingType === 'table' ? '预计 1-2 分钟' : '预计 30秒-1 分钟' }}</div>
           </div>
         </div>
         <div class="content-wrapper">
@@ -220,7 +221,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   UploadFilled, 
@@ -241,6 +242,14 @@ const acceptTypes = '.mdb,.accdb,.sql,.bak,.mysql'
 const selectedFile = ref<File | null>(null)
 const uploading = ref(false)
 const analyzing = ref(false)
+const analyzingType = ref<'file' | 'table'>('file')
+
+const analyzingText = computed(() => {
+  if (analyzingType.value === 'table') {
+    return 'AI 正在分析数据表中，请稍候...'
+  }
+  return 'AI 正在分析文件中，请稍候...'
+})
 const useLocalModel = ref(false)
 const records = ref<AnalysisRecord[]>([])
 const selectedRecord = ref<AnalysisRecord | null>(null)
@@ -352,6 +361,7 @@ const loadTableData = async () => {
 const handleAnalyze = async () => {
   if (!selectedRecord.value) return
 
+  analyzingType.value = 'file'
   analyzing.value = true
   try {
     const result = await equipmentApi.analyzeData(
@@ -374,6 +384,7 @@ const handleAnalyze = async () => {
 const handleAnalyzeTable = async (table: TableInfo) => {
   if (!selectedRecord.value) return
 
+  analyzingType.value = 'table'
   analyzing.value = true
   try {
     const result = await equipmentApi.analyzeData(
@@ -893,20 +904,21 @@ onMounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 2000;
-  backdrop-filter: blur(4px);
+  pointer-events: auto;
 }
 
 .loading-spinner {
-  background: white;
-  padding: 40px 60px;
-  border-radius: 12px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.95);
+  padding: 32px 48px;
+  border-radius: 16px;
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.15);
   text-align: center;
+  max-width: 360px;
 }
 
 .loading-spinner .el-icon {
@@ -916,9 +928,15 @@ onMounted(() => {
 
 .loading-text {
   margin-top: 16px;
-  font-size: 16px;
+  font-size: 15px;
   color: #303133;
   font-weight: 500;
+}
+
+.loading-subtext {
+  margin-top: 8px;
+  font-size: 13px;
+  color: #909399;
 }
 
 @keyframes spin {

@@ -307,11 +307,13 @@ async def analyze_data(
             table_count=record.table_count,
             record_count=record.record_count,
             status="pending",
-            table_name=request.table_name,
+            table_name=request.table_name if request.table_name else None,
             analysis_type="table" if request.table_name else "general"
         )
         db.add(new_record)
         db.flush()
+        
+        logger.info(f"新建记录: id={new_record.id}, table_name={new_record.table_name}, analysis_type={new_record.analysis_type}")
 
         tables = db.query(TableData).filter(
             TableData.record_id == request.record_id
