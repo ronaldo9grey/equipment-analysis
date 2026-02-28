@@ -86,7 +86,7 @@
                 >
                   <div class="record-name">
                     <el-icon><Document /></el-icon>
-                    {{ record.file_name }}{{ record.table_name ? ` (${record.table_name})` : '' }}
+                    {{ record.table_name || record.file_name }}
                   </div>
                   <div class="record-info">
                     <el-tag size="small" :type="getStatusType(record.status)" effect="dark">
@@ -163,7 +163,7 @@
                   </div>
                 </el-tab-pane>
 
-                <el-tab-pane label="AI分析" name="analysis">
+                <el-tab-pane label="分析结果" name="analysis">
                   <div class="analysis-info" v-if="selectedRecord.analysis_result?.content">
                     <el-tag :type="selectedRecord.analysis_result?.data_mode === '全量' ? 'success' : 'warning'" effect="dark" size="small">
                       {{ selectedRecord.analysis_result?.data_mode === '全量' ? '全量分析' : '采样分析 (1000条)' }}
