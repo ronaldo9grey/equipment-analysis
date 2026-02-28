@@ -211,9 +211,7 @@ import {
   Refresh, 
   Delete, 
   MagicStick, 
-  Files, 
   Grid, 
-  View,
   Folder,
   DataLine
 } from '@element-plus/icons-vue'
