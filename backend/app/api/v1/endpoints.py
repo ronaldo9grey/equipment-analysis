@@ -314,20 +314,25 @@ async def download_table_data(
         raise HTTPException(status_code=404, detail="表中无数据")
 
     try:
+        sheet_name = f"Sheet1"
+        
         df = pd.DataFrame(all_data)
         
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            df.to_excel(writer, index=False, sheet_name=table_name[:30])
+            df.to_excel(writer, index=False, sheet_name=sheet_name)
         
         output.seek(0)
         
+        from urllib.parse import quote
+        
         filename = f"{table_name}_{record_id[:8]}.xlsx"
+        encoded_filename = quote(filename)
         
         return StreamingResponse(
             iter([output.getvalue()]),
             media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+            headers={'Content-Disposition': f"attachment; filename={encoded_filename}"}
         )
     except Exception as e:
         logger.error(f"Excel生成失败: {str(e)}")
