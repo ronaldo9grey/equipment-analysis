@@ -292,7 +292,7 @@ async def download_table_data(
     try:
         import pandas as pd
     except ImportError:
-        raise HTTPException(status_code=500, detail="pandas未安装")
+        raise HTTPException(status_code=500, detail="pandas未安装，请运行: pip3 install pandas openpyxl")
     
     record = db.query(AnalysisRecord).filter(AnalysisRecord.id == record_id).first()
     
@@ -306,28 +306,32 @@ async def download_table_data(
     ).first()
 
     if not table_data:
-        raise HTTPException(status_code=404, detail="表不存在")
+        raise HTTPException(status_code=404, detail=f"表不存在: record_id={actual_record_id}, table_name={table_name}")
 
     all_data = table_data.data or []
     
     if not all_data:
         raise HTTPException(status_code=404, detail="表中无数据")
 
-    df = pd.DataFrame(all_data)
-    
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='openpyxl') as writer:
-        df.to_excel(writer, index=False, sheet_name=table_name[:30])
-    
-    output.seek(0)
-    
-    filename = f"{table_name}_{record_id[:8]}.xlsx"
-    
-    return StreamingResponse(
-        iter([output.getvalue()]),
-        media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        headers={'Content-Disposition': f'attachment; filename="{filename}"'}
-    )
+    try:
+        df = pd.DataFrame(all_data)
+        
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, index=False, sheet_name=table_name[:30])
+        
+        output.seek(0)
+        
+        filename = f"{table_name}_{record_id[:8]}.xlsx"
+        
+        return StreamingResponse(
+            iter([output.getvalue()]),
+            media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            headers={'Content-Disposition': f'attachment; filename="{filename}"'}
+        )
+    except Exception as e:
+        logger.error(f"Excel生成失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Excel生成失败: {str(e)}")
 
 
 @router.post("/analyze", response_model=AnalyzeResponse)
