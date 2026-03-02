@@ -19,6 +19,7 @@ from app.schemas.equipment import (
 )
 from app.services.file_parser import get_parser
 from app.services.ai_analyzer import get_analyzer
+from app.services.simulation_engine import simulation_engine
 
 logger = logging.getLogger(__name__)
 
@@ -495,3 +496,107 @@ async def delete_record(
         os.remove(file_location)
 
     return {"message": "删除成功"}
+
+
+@router.post("/simulation/start")
+async def start_simulation(
+    record_id: str,
+    table_name: str,
+    interval: int = 5,
+    use_analysis_features: bool = True,
+    db: Session = Depends(get_db)
+):
+    """启动数据模拟"""
+    
+    record = db.query(AnalysisRecord).filter(AnalysisRecord.id == record_id).first()
+    
+    if not record:
+        raise HTTPException(status_code=404, detail="记录不存在")
+    
+    actual_record_id = record_id
+    if record.source_record_id:
+        actual_record_id = record.source_record_id
+    
+    table_data = db.query(TableData).filter(
+        TableData.record_id == actual_record_id,
+        TableData.table_name == table_name
+    ).first()
+    
+    if not table_data:
+        raise HTTPException(status_code=404, detail="表不存在")
+    
+    columns = table_data.columns or []
+    analysis_features = None
+    
+    if use_analysis_features and record.analysis_result:
+        analysis_features = simulation_engine.extract_features_from_analysis(
+            record.analysis_result
+        )
+    
+    simulation_id = f"{record_id}_{table_name}"
+    
+    result = simulation_engine.start_simulation(
+        simulation_id=simulation_id,
+        columns=columns,
+        interval=interval,
+        analysis_features=analysis_features
+    )
+    
+    return result
+
+
+@router.post("/simulation/stop")
+async def stop_simulation(simulation_id: str):
+    """停止模拟"""
+    result = simulation_engine.stop_simulation(simulation_id)
+    return result
+
+
+@router.get("/simulation/data")
+async def get_simulation_data(
+    simulation_id: str,
+    row_count: int = 20
+):
+    """获取模拟数据"""
+    
+    status = simulation_engine.get_simulation_status(simulation_id)
+    
+    if not status:
+        raise HTTPException(status_code=404, detail="模拟不存在")
+    
+    columns = status.get('columns', [])
+    analysis_features = status.get('analysis_features', {})
+    
+    data = simulation_engine.generate_simulation_data(
+        columns=columns,
+        row_count=row_count,
+        analysis_features=analysis_features
+    )
+    
+    return {
+        "simulation_id": simulation_id,
+        "status": status.get('status'),
+        "data": data,
+        "columns": columns,
+        "data_count": len(data)
+    }
+
+
+@router.get("/simulation/status")
+async def get_simulation_status(simulation_id: str):
+    """获取模拟状态"""
+    status = simulation_engine.get_simulation_status(simulation_id)
+    
+    if not status:
+        return {
+            "simulation_id": simulation_id,
+            "status": "not_found",
+            "message": "模拟不存在"
+        }
+    
+    return {
+        "simulation_id": simulation_id,
+        "status": status.get('status'),
+        "start_time": status.get('start_time'),
+        "data_count": status.get('data_count', 0)
+    }

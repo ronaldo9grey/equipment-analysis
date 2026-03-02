@@ -103,6 +103,39 @@ export const equipmentApi = {
     return response.data
   },
 
+  startSimulation: async (recordId: string, tableName: string, interval = 5, useAnalysisFeatures = true) => {
+    const response = await apiClient.post('/simulation/start', null, {
+      params: {
+        record_id: recordId,
+        table_name: tableName,
+        interval,
+        use_analysis_features: useAnalysisFeatures
+      }
+    })
+    return response.data
+  },
+
+  stopSimulation: async (simulationId: string) => {
+    const response = await apiClient.post('/simulation/stop', null, {
+      params: { simulation_id: simulationId }
+    })
+    return response.data
+  },
+
+  getSimulationData: async (simulationId: string, rowCount = 20) => {
+    const response = await apiClient.get('/simulation/data', {
+      params: { simulation_id: simulationId, row_count: rowCount }
+    })
+    return response.data
+  },
+
+  getSimulationStatus: async (simulationId: string) => {
+    const response = await apiClient.get('/simulation/status', {
+      params: { simulation_id: simulationId }
+    })
+    return response.data
+  },
+
   deleteRecord: async (id: string) => {
     const response = await apiClient.delete(`/records/${id}`)
     return response.data

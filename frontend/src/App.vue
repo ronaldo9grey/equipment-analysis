@@ -192,6 +192,37 @@
                   </div>
                   <el-empty v-else description="暂无分析结果" />
                 </el-tab-pane>
+
+                <el-tab-pane label="运行模拟" name="simulation" v-if="selectedRecord?.table_name">
+                  <div class="simulation-panel">
+                    <div class="simulation-header">
+                      <el-switch
+                        v-model="simulationRunning"
+                        active-text="运行中"
+                        inactive-text="已停止"
+                        @change="simulationRunning ? handleStartSimulation() : handleStopSimulation()"
+                      />
+                      <el-checkbox v-model="useAnalysisFeatures" style="margin-left: 16px">
+                        应用AI分析特征
+                      </el-checkbox>
+                      <span class="simulation-tip" v-if="useAnalysisFeatures">
+                        模拟数据将体现AI分析发现的问题特征（缺失值、异常值等）
+                      </span>
+                    </div>
+                    <div class="simulation-data">
+                      <el-table :data="simulationData" stripe size="small" max-height="400" v-if="simulationData.length > 0">
+                        <el-table-column v-for="col in simulationColumns" :key="col" :prop="col" :label="col" min-width="100" show-overflow-tooltip>
+                          <template #default="{ row }">
+                            <span :class="{'anomaly-value': isAnomalyValue(row[col])}">
+                              {{ row[col] === null || row[col] === undefined ? '-' : row[col] }}
+                            </span>
+                          </template>
+                        </el-table-column>
+                      </el-table>
+                      <el-empty v-else description="点击开关启动模拟" />
+                    </div>
+                  </div>
+                </el-tab-pane>
               </el-tabs>
             </el-card>
           </div>
@@ -236,7 +267,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   UploadFilled, 
@@ -278,6 +309,11 @@ const selectedRecord = ref<AnalysisRecord | null>(null)
 const tables = ref<TableInfo[]>([])
 const tableDataForView = ref<any[]>([])
 const tableColumnsForView = ref<string[]>([])
+const simulationId = ref('')
+const simulationRunning = ref(false)
+const simulationData = ref<any[]>([])
+const simulationColumns = ref<string[]>([])
+const useAnalysisFeatures = ref(true)
 const activeTab = ref('tables')
 
 const tableDialogVisible = ref(false)
@@ -470,6 +506,57 @@ const handleDownloadData = async () => {
   }
 }
 
+const handleStartSimulation = async () => {
+  if (!selectedRecord.value?.table_name) return
+  
+  simulationId.value = `${selectedRecord.value.id}_${selectedRecord.value.table_name}`
+  
+  try {
+    await equipmentApi.startSimulation(
+      selectedRecord.value.id,
+      selectedRecord.value.table_name,
+      5,
+      useAnalysisFeatures.value
+    )
+    simulationRunning.value = true
+    ElMessage.success('模拟已启动')
+    fetchSimulationData()
+  } catch (error: any) {
+    ElMessage.error('启动模拟失败')
+  }
+}
+
+const handleStopSimulation = async () => {
+  if (!simulationId.value) return
+  
+  try {
+    await equipmentApi.stopSimulation(simulationId.value)
+    simulationRunning.value = false
+    ElMessage.success('模拟已停止')
+  } catch (error: any) {
+    ElMessage.error('停止模拟失败')
+  }
+}
+
+let simulationTimer: number | null = null
+
+const fetchSimulationData = async () => {
+  if (!simulationRunning.value || !simulationId.value) return
+  
+  try {
+    const result = await equipmentApi.getSimulationData(simulationId.value, 20)
+    simulationData.value = result.data || []
+    simulationColumns.value = result.columns || []
+    
+    if (simulationRunning.value) {
+      simulationTimer = window.setTimeout(fetchSimulationData, 3000)
+    }
+  } catch (error: any) {
+    console.error('获取模拟数据失败:', error)
+    simulationRunning.value = false
+  }
+}
+
 const handleModelChange = (value: boolean) => {
   ElMessage.info(value ? '已切换到本地模型' : '已切换到DeepSeek模型')
 }
@@ -542,8 +629,22 @@ const renderMarkdown = (text: string): string => {
   return html
 }
 
+const isAnomalyValue = (value: any): boolean => {
+  if (value === null || value === undefined) return true
+  if (typeof value === 'number') {
+    return value < 0 || value > 10000 || value === 9999
+  }
+  return false
+}
+
 onMounted(() => {
   loadRecords()
+})
+
+onUnmounted(() => {
+  if (simulationTimer) {
+    clearTimeout(simulationTimer)
+  }
 })
 </script>
 
@@ -828,6 +929,38 @@ onMounted(() => {
 .dataset-count {
   color: #909399;
   font-size: 13px;
+}
+
+.simulation-panel {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.simulation-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px;
+  background: #f5f7fa;
+  border-radius: 4px;
+}
+
+.simulation-tip {
+  color: #909399;
+  font-size: 12px;
+  margin-left: 8px;
+}
+
+.simulation-data {
+  flex: 1;
+  overflow: auto;
+}
+
+.anomaly-value {
+  color: #f56c6c;
+  font-weight: bold;
 }
 
 .analysis-result {
