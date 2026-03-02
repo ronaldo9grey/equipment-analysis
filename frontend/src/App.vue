@@ -196,12 +196,13 @@
                 <el-tab-pane label="运行模拟" name="simulation" v-if="selectedRecord?.table_name">
                   <div class="simulation-panel">
                     <div class="simulation-header">
-                      <el-switch
-                        v-model="simulationRunning"
-                        active-text="运行中"
-                        inactive-text="已停止"
-                        @change="simulationRunning ? handleStartSimulation() : handleStopSimulation()"
-                      />
+                      <el-button 
+                        :type="simulationRunning ? 'danger' : 'primary'" 
+                        size="small"
+                        @click="simulationRunning ? handleStopSimulation() : handleStartSimulation()"
+                      >
+                        {{ simulationRunning ? '停止模拟' : '启动模拟' }}
+                      </el-button>
                       <el-checkbox v-model="useAnalysisFeatures" style="margin-left: 16px">
                         应用AI分析特征
                       </el-checkbox>
@@ -519,6 +520,7 @@ const handleStartSimulation = async () => {
       useAnalysisFeatures.value
     )
     simulationRunning.value = true
+    activeTab.value = 'simulation'
     ElMessage.success('模拟已启动')
     fetchSimulationData()
   } catch (error: any) {
