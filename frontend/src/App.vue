@@ -210,17 +210,16 @@
                         模拟数据将体现AI分析发现的问题特征（缺失值、异常值等）
                       </span>
                     </div>
-                    <div class="simulation-data">
-                      <el-table :data="simulationData" stripe size="small" max-height="400" v-if="simulationData.length > 0">
-                        <el-table-column v-for="col in simulationColumns" :key="col" :prop="col" :label="col" min-width="100" show-overflow-tooltip>
-                          <template #default="{ row }">
-                            <span :class="{'anomaly-value': isAnomalyValue(row[col])}">
-                              {{ row[col] === null || row[col] === undefined ? '-' : row[col] }}
-                            </span>
-                          </template>
-                        </el-table-column>
-                      </el-table>
-                      <el-empty v-else description="点击开关启动模拟" />
+                    <div class="simulation-chart">
+                      <div class="chart-controls">
+                        <span class="chart-label">选择字段：</span>
+                        <el-select v-model="selectedChartField" size="small" placeholder="选择字段" @change="updateChart">
+                          <el-option v-for="col in simulationColumns" :key="col" :label="col" :value="col" />
+                        </el-select>
+                      </div>
+                      <v-chart class="chart" :option="chartOptions" autoresize v-if="simulationRunning && simulationData.length > 0" />
+                      <el-empty v-if="!simulationRunning" description="点击启动模拟开始生成数据" />
+                      <el-empty v-if="simulationRunning && simulationData.length === 0" description="暂无数据" />
                     </div>
                   </div>
                 </el-tab-pane>
@@ -315,6 +314,9 @@ const simulationRunning = ref(false)
 const simulationData = ref<any[]>([])
 const simulationColumns = ref<string[]>([])
 const useAnalysisFeatures = ref(true)
+const simulationHistory = ref<any[]>([])
+const chartOptions = ref({})
+const selectedChartField = ref('')
 const activeTab = ref('tables')
 
 const tableDialogVisible = ref(false)
@@ -550,12 +552,88 @@ const fetchSimulationData = async () => {
     simulationData.value = result.data || []
     simulationColumns.value = result.columns || []
     
+    if (simulationColumns.value.length > 0 && !selectedChartField.value) {
+      selectedChartField.value = simulationColumns.value[0] as string
+    }
+    
+    const newHistory = result.data.map((item: any) => ({
+      time: new Date().toLocaleTimeString(),
+      ...item
+    }))
+    
+    simulationHistory.value = [...simulationHistory.value, ...newHistory].slice(-100)
+    
+    updateChart()
+    
     if (simulationRunning.value) {
       simulationTimer = window.setTimeout(fetchSimulationData, 3000)
     }
   } catch (error: any) {
     console.error('获取模拟数据失败:', error)
     simulationRunning.value = false
+  }
+}
+
+const updateChart = () => {
+  if (!selectedChartField.value || simulationHistory.value.length === 0) return
+  
+  const field = selectedChartField.value
+  const data = simulationHistory.value
+    .slice(-50)
+    .map((item, idx) => ({
+      name: item.time,
+      value: [idx, item[field]]
+    }))
+    .filter((item: any) => item.value[1] !== null && item.value[1] !== undefined)
+  
+  chartOptions.value = {
+    title: {
+      text: `${field} 实时趋势`,
+      left: 'center',
+      textStyle: { fontSize: 14 }
+    },
+    tooltip: {
+      trigger: 'axis',
+      formatter: (params: any) => {
+        const p = params[0]
+        return `${p.name}<br/>${field}: ${p.value[1]}`
+      }
+    },
+    xAxis: {
+      type: 'value',
+      show: false,
+      minInterval: 1
+    },
+    yAxis: {
+      type: 'value',
+      name: field,
+      nameTextStyle: { fontSize: 11 }
+    },
+    series: [{
+      type: 'line',
+      data: data,
+      smooth: true,
+      showSymbol: false,
+      lineStyle: { color: '#409eff', width: 2 },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+            { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
+          ]
+        }
+      },
+      markLine: {
+        data: [
+          { type: 'average', name: '平均值' }
+        ]
+      }
+    }],
+    grid: {
+      left: 50, right: 20, top: 40, bottom: 30
+    }
   }
 }
 
@@ -629,14 +707,6 @@ const renderMarkdown = (text: string): string => {
   html = html.replace(/<\/p><\/p>/g, '</p>')
   
   return html
-}
-
-const isAnomalyValue = (value: any): boolean => {
-  if (value === null || value === undefined) return true
-  if (typeof value === 'number') {
-    return value < 0 || value > 10000 || value === 9999
-  }
-  return false
 }
 
 onMounted(() => {
@@ -958,6 +1028,31 @@ onUnmounted(() => {
 .simulation-data {
   flex: 1;
   overflow: auto;
+}
+
+.simulation-chart {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 400px;
+}
+
+.chart-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.chart-label {
+  font-size: 13px;
+  color: #606266;
+}
+
+.chart {
+  flex: 1;
+  width: 100%;
+  min-height: 350px;
 }
 
 .anomaly-value {
