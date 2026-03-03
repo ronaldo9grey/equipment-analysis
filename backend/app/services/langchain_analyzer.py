@@ -272,6 +272,7 @@ class LangChainAnalyzer:
 
 
 _analyzer: Optional[LangChainAnalyzer] = None
+_rag: Optional[RAGRetriever] = None
 
 
 def get_langchain_analyzer(use_local_model: bool = False) -> LangChainAnalyzer:
@@ -280,3 +281,14 @@ def get_langchain_analyzer(use_local_model: bool = False) -> LangChainAnalyzer:
     if _analyzer is None or _analyzer.use_local_model != use_local_model:
         _analyzer = LangChainAnalyzer(use_local_model)
     return _analyzer
+
+
+def get_rag_retriever() -> RAGRetriever:
+    """获取 RAG 检索器实例"""
+    global _rag
+    if _rag is None:
+        _rag = RAGRetriever()
+    return _rag
+
+
+rag_retriever = get_rag_retriever()

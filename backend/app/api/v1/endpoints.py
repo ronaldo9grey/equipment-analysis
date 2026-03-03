@@ -18,7 +18,7 @@ from app.schemas.equipment import (
     AnalyzeResponse
 )
 from app.services.file_parser import get_parser
-from app.services.langchain_analyzer import get_langchain_analyzer
+from app.services.langchain_analyzer import get_langchain_analyzer, rag_retriever
 from app.services.simulation_engine import simulation_engine
 
 logger = logging.getLogger(__name__)
@@ -137,6 +137,18 @@ async def upload_file(
             db.add(table_data)
 
         db.commit()
+
+        try:
+            table_summaries = []
+            for table in parse_result.get("tables", [])[:5]:
+                summary = f"表名: {table.get('table_name')}, 记录数: {table.get('row_count')}, 字段: {', '.join(table.get('columns', [])[:10])}"
+                table_summaries.append(summary)
+            
+            doc_text = f"文件: {file.filename}, 包含 {len(parse_result.get('tables', []))} 个数据表. {'; '.join(table_summaries)}"
+            rag_retriever.add_documents([doc_text], [{"file_name": file.filename, "type": "upload"}])
+            logger.info(f"已将文件信息添加到知识库: {file.filename}")
+        except Exception as e:
+            logger.warning(f"添加到知识库失败: {str(e)}")
 
         return AnalysisRecordResponse(
             id=record.id,
