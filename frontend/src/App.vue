@@ -213,7 +213,7 @@
                     <div class="simulation-chart">
                       <div class="chart-controls">
                         <span class="chart-label">选择字段：</span>
-                        <el-select v-model="selectedChartField" size="small" placeholder="选择字段" @change="updateChart">
+                        <el-select v-model="selectedChartFields" multiple collapse-tags collapse-tags-tooltip size="small" placeholder="选择字段" @change="updateChart">
                           <el-option v-for="col in simulationColumns" :key="col" :label="col" :value="col" />
                         </el-select>
                       </div>
@@ -316,7 +316,19 @@ const simulationColumns = ref<string[]>([])
 const useAnalysisFeatures = ref(true)
 const simulationHistory = ref<any[]>([])
 const chartOptions = ref({})
-const selectedChartField = ref('')
+const selectedChartFields = ref<string[]>([])
+
+const chartColors = [
+  '#409eff', '#67c23a', '#e6a23c', '#f56c6c', '#909399',
+  '#c71585', '#00ced1', '#9370db', '#3cb371', '#ff6347'
+]
+
+const hexToRgba = (hex: string, alpha: number) => {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+}
 const activeTab = ref('tables')
 
 const tableDialogVisible = ref(false)
@@ -552,9 +564,9 @@ const fetchSimulationData = async () => {
     simulationData.value = result.data || []
     simulationColumns.value = result.columns || []
     
-    if (simulationColumns.value.length > 0 && !selectedChartField.value) {
-      selectedChartField.value = simulationColumns.value[0] as string
-    }
+    if (simulationColumns.value.length > 0 && selectedChartFields.value.length === 0) {
+        selectedChartFields.value = simulationColumns.value.slice(0, 2) as string[]
+      }
     
     const newHistory = result.data.map((item: any) => ({
       time: new Date().toLocaleTimeString(),
@@ -575,69 +587,87 @@ const fetchSimulationData = async () => {
 }
 
 const updateChart = () => {
-  if (!selectedChartField.value || simulationHistory.value.length === 0) return
+  if (selectedChartFields.value.length === 0 || simulationHistory.value.length === 0) {
+    chartOptions.value = {}
+    return
+  }
   
-  const field = selectedChartField.value
-  const data = simulationHistory.value
-    .slice(-50)
-    .map((item, idx) => ({
+  const fields = selectedChartFields.value
+  const historyData = simulationHistory.value.slice(-50)
+  
+  const series = fields.map((field, idx) => {
+    const color = chartColors[idx % chartColors.length] as string
+    const data = historyData.map((item, i) => ({
       name: item.time,
-      value: [idx, item[field]]
-    }))
-    .filter((item: any) => item.value[1] !== null && item.value[1] !== undefined)
+      value: [i, item[field]]
+    })).filter((item: any) => item.value[1] !== null && item.value[1] !== undefined)
+    
+    return {
+      name: field,
+      type: 'line',
+      data: data,
+      smooth: true,
+      symbol: 'circle',
+      symbolSize: 5,
+      showSymbol: idx === fields.length - 1,
+      xAxisIndex: 0,
+      yAxisIndex: idx,
+      lineStyle: { color, width: 2 },
+      itemStyle: { color },
+      areaStyle: {
+        color: {
+          type: 'linear',
+          x: 0, y: 0, x2: 0, y2: 1,
+          colorStops: [
+            { offset: 0, color: hexToRgba(color, 0.3) },
+            { offset: 1, color: 'transparent' }
+          ]
+        }
+      },
+      animationDuration: 800,
+      animationEasing: 'cubicInOut'
+    }
+  })
+  
+  const yAxes = fields.map((field, idx) => ({
+    type: 'value',
+    name: field,
+    nameTextStyle: { fontSize: 10, color: chartColors[idx % chartColors.length] },
+    position: idx === 0 ? 'left' : 'right',
+    axisLine: { lineStyle: { color: chartColors[idx % chartColors.length] } },
+    splitLine: { show: idx === 0 }
+  }))
   
   chartOptions.value = {
     title: {
-      text: `${field} 实时趋势`,
+      text: '多字段实时趋势',
       left: 'center',
       textStyle: { fontSize: 14 }
     },
     tooltip: {
       trigger: 'axis',
       formatter: (params: any) => {
-        const p = params[0]
-        return `${p.name}<br/>${field}: ${p.value[1]}`
+        let result = params[0]?.name + '<br/>'
+        params.forEach((p: any) => {
+          result += `${p.marker} ${p.seriesName}: ${p.value?.[1] ?? '-'}<br/>`
+        })
+        return result
       }
+    },
+    legend: {
+      data: fields,
+      top: 25,
+      textStyle: { fontSize: 11 }
     },
     xAxis: {
       type: 'value',
       show: false,
       minInterval: 1
     },
-    yAxis: {
-      type: 'value',
-      name: field,
-      nameTextStyle: { fontSize: 11 }
-    },
-    series: [{
-      type: 'line',
-      data: data,
-      smooth: true,
-      symbol: 'circle',
-      symbolSize: 6,
-      showSymbol: true,
-      lineStyle: { color: '#409eff', width: 2 },
-      itemStyle: { color: '#409eff' },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: 'rgba(64, 158, 255, 0.4)' },
-            { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
-          ]
-        }
-      },
-      animationDuration: 800,
-      animationEasing: 'cubicInOut',
-      markLine: {
-        data: [
-          { type: 'average', name: '平均值' }
-        ]
-      }
-    }],
+    yAxis: yAxes,
+    series,
     grid: {
-      left: 50, right: 20, top: 40, bottom: 30
+      left: 50, right: 60, top: 60, bottom: 30
     }
   }
 }
