@@ -66,7 +66,7 @@ class KnowledgeBaseManager:
             logger.error(f"TXT 读取失败: {str(e)}")
             return ""
 
-    def add_document(self, file, file_name: str) -> Dict[str, Any]:
+    def add_document(self, file_content: bytes, file_name: str) -> Dict[str, Any]:
         """添加文档到知识库"""
         if not self.vectorstore:
             return {
@@ -80,7 +80,7 @@ class KnowledgeBaseManager:
             file_path = os.path.join(self.docs_dir, f"{doc_id}_{file_name}")
 
             with open(file_path, 'wb') as f:
-                f.write(file.read())
+                f.write(file_content)
 
             if file_ext == '.pdf':
                 text = self._extract_text_from_pdf(file_path)

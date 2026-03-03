@@ -370,6 +370,7 @@ const simulationColumns = ref<string[]>([])
 const useAnalysisFeatures = ref(true)
 const simulationHistory = ref<any[]>([])
 const chartOptions = ref({})
+const selectedChartField = ref('')
 const selectedChartFields = ref<string[]>([])
 
 const chartColors = [
@@ -377,12 +378,6 @@ const chartColors = [
   '#c71585', '#00ced1', '#9370db', '#3cb371', '#ff6347'
 ]
 
-const hexToRgba = (hex: string, alpha: number) => {
-  const r = parseInt(hex.slice(1, 3), 16)
-  const g = parseInt(hex.slice(3, 5), 16)
-  const b = parseInt(hex.slice(5, 7), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
-}
 const activeTab = ref('tables')
 
 const tableDialogVisible = ref(false)
@@ -657,9 +652,12 @@ const fetchSimulationData = async () => {
     simulationData.value = result.data || []
     simulationColumns.value = result.columns || []
     
-    if (simulationColumns.value.length > 0 && selectedChartFields.value.length === 0) {
+    if (simulationColumns.value.length > 0) {
+      if (selectedChartFields.value.length === 0) {
         selectedChartFields.value = simulationColumns.value.slice(0, 2) as string[]
       }
+      selectedChartField.value = simulationColumns.value[0] as string
+    }
     
     const newHistory = result.data.map((item: any) => ({
       time: new Date().toLocaleTimeString(),
@@ -686,7 +684,8 @@ const updateChart = () => {
   }
   
   const fields = selectedChartFields.value
-  const historyData = simulationHistory.value.slice(-50)
+  const maxPoints = 40
+  const historyData = simulationHistory.value.slice(-maxPoints)
   
   const series = fields.map((field, idx) => {
     const color = chartColors[idx % chartColors.length] as string
@@ -699,46 +698,41 @@ const updateChart = () => {
       name: field,
       type: 'line',
       data: data,
-      smooth: true,
+      smooth: 0.3,
       symbol: 'circle',
-      symbolSize: 5,
-      showSymbol: idx === fields.length - 1,
+      symbolSize: 6,
+      showSymbol: true,
+      symbolRotate: 0,
       xAxisIndex: 0,
       yAxisIndex: idx,
-      lineStyle: { color, width: 2 },
-      itemStyle: { color },
-      areaStyle: {
-        color: {
-          type: 'linear',
-          x: 0, y: 0, x2: 0, y2: 1,
-          colorStops: [
-            { offset: 0, color: hexToRgba(color, 0.3) },
-            { offset: 1, color: 'transparent' }
-          ]
-        }
-      },
-      animationDuration: 800,
-      animationEasing: 'cubicInOut'
+      lineStyle: { color, width: 2.5 },
+      itemStyle: { color, borderColor: '#fff', borderWidth: 1 },
+      areaStyle: null,
+      animationDuration: 300,
+      animationEasing: 'linear'
     }
   })
   
   const yAxes = fields.map((field, idx) => ({
     type: 'value',
     name: field,
-    nameTextStyle: { fontSize: 10, color: chartColors[idx % chartColors.length] },
+    nameTextStyle: { fontSize: 10, color: chartColors[idx % chartColors.length], padding: [0, 0, 0, 40] },
     position: idx === 0 ? 'left' : 'right',
+    offset: idx > 0 ? (idx - 1) * 50 : 0,
     axisLine: { lineStyle: { color: chartColors[idx % chartColors.length] } },
-    splitLine: { show: idx === 0 }
+    axisLabel: { fontSize: 9 },
+    splitLine: { show: idx === 0, lineStyle: { type: 'dashed', opacity: 0.3 } }
   }))
   
   chartOptions.value = {
     title: {
-      text: '多字段实时趋势',
+      text: '实时数据流',
       left: 'center',
       textStyle: { fontSize: 14 }
     },
     tooltip: {
       trigger: 'axis',
+      axisPointer: { type: 'cross', label: { backgroundColor: '#6a7985' } },
       formatter: (params: any) => {
         let result = params[0]?.name + '<br/>'
         params.forEach((p: any) => {
@@ -752,16 +746,19 @@ const updateChart = () => {
       top: 25,
       textStyle: { fontSize: 11 }
     },
+    grid: {
+      left: 60, right: 80, top: 60, bottom: 30
+    },
     xAxis: {
-      type: 'value',
-      show: false,
-      minInterval: 1
+      type: 'category',
+      boundaryGap: false,
+      data: historyData.map((item, i) => item.time || `${i}s`),
+      axisLabel: { show: false },
+      axisLine: { lineStyle: { color: '#999' } }
     },
     yAxis: yAxes,
     series,
-    grid: {
-      left: 50, right: 60, top: 60, bottom: 30
-    }
+    animation: true
   }
 }
 
@@ -949,13 +946,18 @@ onUnmounted(() => {
 
 .right-panel {
   flex: 1;
+  min-width: 800px;
+  max-width: 1200px;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  min-height: 600px;
+  height: calc(100vh - 40px);
 }
 
 .right-panel .right-card {
   height: 100%;
+  min-height: 600px;
   display: flex;
   flex-direction: column;
 }

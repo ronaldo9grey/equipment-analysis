@@ -505,7 +505,8 @@ async def upload_knowledge_document(
 ):
     """上传文档到知识库"""
     try:
-        result = knowledge_manager.add_document(file.file, file.filename)
+        file_content = await file.read()
+        result = knowledge_manager.add_document(file_content, file.filename)
         if result.get("success"):
             return {
                 "success": True,
