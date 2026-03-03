@@ -613,18 +613,23 @@ const updateChart = () => {
       type: 'line',
       data: data,
       smooth: true,
-      showSymbol: false,
+      symbol: 'circle',
+      symbolSize: 6,
+      showSymbol: true,
       lineStyle: { color: '#409eff', width: 2 },
+      itemStyle: { color: '#409eff' },
       areaStyle: {
         color: {
           type: 'linear',
           x: 0, y: 0, x2: 0, y2: 1,
           colorStops: [
-            { offset: 0, color: 'rgba(64, 158, 255, 0.3)' },
+            { offset: 0, color: 'rgba(64, 158, 255, 0.4)' },
             { offset: 1, color: 'rgba(64, 158, 255, 0.05)' }
           ]
         }
       },
+      animationDuration: 800,
+      animationEasing: 'cubicInOut',
       markLine: {
         data: [
           { type: 'average', name: '平均值' }
