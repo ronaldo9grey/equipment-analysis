@@ -566,7 +566,7 @@ const fetchSimulationData = async () => {
     updateChart()
     
     if (simulationRunning.value) {
-      simulationTimer = window.setTimeout(fetchSimulationData, 3000)
+      simulationTimer = window.setTimeout(fetchSimulationData, 1000)
     }
   } catch (error: any) {
     console.error('获取模拟数据失败:', error)
@@ -1052,7 +1052,8 @@ onUnmounted(() => {
 .chart {
   flex: 1;
   width: 100%;
-  min-height: 350px;
+  min-height: 500px;
+  height: 500px;
 }
 
 .anomaly-value {

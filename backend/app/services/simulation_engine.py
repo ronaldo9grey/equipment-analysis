@@ -115,8 +115,9 @@ class SimulationEngine:
     
     def extract_features_from_analysis(
         self, 
-        analysis_result: Dict[str, Any]
-    ) -> Dict[str, Dict[str, Any]]:
+        analysis_result: Dict[str, Any],
+        columns: List[str] = None
+    ) -> Dict[str, Any]:
         """从AI分析结果中提取字段特征"""
         
         features = {}
@@ -125,24 +126,46 @@ class SimulationEngine:
         
         import re
         
-        missing_pattern = r'缺失[率高]*.?(\d+\.?\d*)%?'
-        missing_matches = re.findall(missing_pattern, content)
-        if missing_matches:
-            for match in missing_matches[:5]:
-                rate = float(match) / 100 if float(match) > 1 else float(match)
-                features[f'field_{len(features)}'] = {
-                    'missing_rate': rate,
-                    'type': 'missing'
-                }
+        for col in (columns or []):
+            col_features = {}
+            col_lower = col.lower()
+            
+            missing_patterns = [
+                rf'{col}[^。\n]{0,20}缺失[^。\n]{0,20}(\d+\.?\d*)%',
+                rf'{col}[^。\n]{0,20}缺失率[^。\n]{0,20}(\d+\.?\d*)%'
+            ]
+            
+            for pattern in missing_patterns:
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    rate = float(match.group(1))
+                    if rate > 1:
+                        rate = rate / 100
+                    col_features['missing_rate'] = rate
+                    break
+            
+            anomaly_patterns = [
+                rf'{col}[^。\n]{0,20}异常[^。\n]{0,20}(\d+\.?\d*)%',
+                rf'{col}[^。\n]{0,20}异常值[^。\n]{0,20}(\d+\.?\d*)%'
+            ]
+            
+            for pattern in anomaly_patterns:
+                match = re.search(pattern, content, re.IGNORECASE)
+                if match:
+                    rate = float(match.group(1))
+                    if rate > 1:
+                        rate = rate / 100
+                    col_features['anomaly_rate'] = rate
+                    break
+            
+            if col_features:
+                features[col] = col_features
         
-        anomaly_pattern = r'异常[值高]*.?(\d+\.?\d*)%?'
-        anomaly_matches = re.findall(anomaly_pattern, content)
-        if anomaly_matches:
-            for match in anomaly_matches[:5]:
-                rate = float(match) / 100 if float(match) > 1 else float(match)
-                features[f'field_{len(features)}'] = {
-                    'anomaly_rate': rate,
-                    'type': 'anomaly'
+        if not features and columns:
+            for col in columns[:3]:
+                features[col] = {
+                    'missing_rate': 0.05,
+                    'anomaly_rate': 0.03
                 }
         
         logger.info(f"提取到模拟特征: {features}")

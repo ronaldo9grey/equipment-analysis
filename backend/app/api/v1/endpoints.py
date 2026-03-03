@@ -530,7 +530,8 @@ async def start_simulation(
     
     if use_analysis_features and record.analysis_result:
         analysis_features = simulation_engine.extract_features_from_analysis(
-            record.analysis_result
+            record.analysis_result,
+            columns
         )
     
     simulation_id = f"{record_id}_{table_name}"
