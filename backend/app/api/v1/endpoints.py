@@ -18,7 +18,7 @@ from app.schemas.equipment import (
     AnalyzeResponse
 )
 from app.services.file_parser import get_parser
-from app.services.ai_analyzer import get_analyzer
+from app.services.langchain_analyzer import get_langchain_analyzer
 from app.services.simulation_engine import simulation_engine
 
 logger = logging.getLogger(__name__)
@@ -426,7 +426,7 @@ async def analyze_data(
             analysis_type = "general"
             logger.info(f"分析整个文件，包含 {len(tables)} 个表")
 
-        analyzer = get_analyzer(use_local_model=request.use_local_model)
+        analyzer = get_langchain_analyzer(use_local_model=request.use_local_model)
         logger.info(f"调用AI分析器完成，准备分析")
 
         analysis_result = analyzer.analyze(
