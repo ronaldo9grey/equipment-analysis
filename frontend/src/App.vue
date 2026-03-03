@@ -285,7 +285,7 @@
           drag
           :auto-upload="false"
           :show-file-list="false"
-          :on-change="(file: any) => { handleUploadKnowledge(file.raw); knowledgeDialogVisible = false }"
+          :on-change="(file: any) => { handleUploadKnowledge(file.raw) }"
           accept=".pdf,.txt"
         >
           <el-icon class="upload-icon"><UploadFilled /></el-icon>
@@ -438,13 +438,16 @@ const loadKnowledgeDocs = async () => {
 const handleUploadKnowledge = async (file: File) => {
   uploadingKnowledge.value = true
   try {
-    await equipmentApi.uploadKnowledgeDoc(file)
+    const result = await equipmentApi.uploadKnowledgeDoc(file)
+    console.log('上传结果:', result)
     ElMessage.success('文档已添加到知识库')
     loadKnowledgeDocs()
   } catch (error: any) {
-    ElMessage.error(error.message || '上传失败')
+    console.error('上传失败:', error)
+    ElMessage.error(error.response?.data?.detail || error.message || '上传失败')
   } finally {
     uploadingKnowledge.value = false
+    knowledgeDialogVisible.value = false
   }
 }
 
@@ -669,7 +672,7 @@ const fetchSimulationData = async () => {
     updateChart()
     
     if (simulationRunning.value) {
-      simulationTimer = window.setTimeout(fetchSimulationData, 1000)
+      simulationTimer = window.setTimeout(fetchSimulationData, 2000)
     }
   } catch (error: any) {
     console.error('获取模拟数据失败:', error)
@@ -683,8 +686,8 @@ const updateChart = () => {
     return
   }
   
-  const fields = selectedChartFields.value
-  const maxPoints = 40
+  const fields = selectedChartFields.value.slice(0, 1)
+  const maxPoints = 20
   const historyData = simulationHistory.value.slice(-maxPoints)
   
   const series = fields.map((field, idx) => {
@@ -698,17 +701,17 @@ const updateChart = () => {
       name: field,
       type: 'line',
       data: data,
-      smooth: 0.3,
+      smooth: false,
       symbol: 'circle',
-      symbolSize: 6,
+      symbolSize: 8,
       showSymbol: true,
-      symbolRotate: 0,
+      step: 'end',
       xAxisIndex: 0,
       yAxisIndex: idx,
-      lineStyle: { color, width: 2.5 },
-      itemStyle: { color, borderColor: '#fff', borderWidth: 1 },
+      lineStyle: { color, width: 2 },
+      itemStyle: { color, borderColor: '#fff', borderWidth: 2 },
       areaStyle: null,
-      animationDuration: 300,
+      animationDuration: 500,
       animationEasing: 'linear'
     }
   })
@@ -716,12 +719,11 @@ const updateChart = () => {
   const yAxes = fields.map((field, idx) => ({
     type: 'value',
     name: field,
-    nameTextStyle: { fontSize: 10, color: chartColors[idx % chartColors.length], padding: [0, 0, 0, 40] },
-    position: idx === 0 ? 'left' : 'right',
-    offset: idx > 0 ? (idx - 1) * 50 : 0,
+    nameTextStyle: { fontSize: 11, color: chartColors[idx % chartColors.length] },
+    position: 'left',
     axisLine: { lineStyle: { color: chartColors[idx % chartColors.length] } },
-    axisLabel: { fontSize: 9 },
-    splitLine: { show: idx === 0, lineStyle: { type: 'dashed', opacity: 0.3 } }
+    axisLabel: { fontSize: 10 },
+    splitLine: { show: true, lineStyle: { type: 'dashed', opacity: 0.3 } }
   }))
   
   chartOptions.value = {
@@ -747,12 +749,11 @@ const updateChart = () => {
       textStyle: { fontSize: 11 }
     },
     grid: {
-      left: 60, right: 80, top: 60, bottom: 30
+      left: 50, right: 20, top: 40, bottom: 30
     },
     xAxis: {
-      type: 'category',
-      boundaryGap: false,
-      data: historyData.map((item, i) => item.time || `${i}s`),
+      type: 'value',
+      minInterval: 1,
       axisLabel: { show: false },
       axisLine: { lineStyle: { color: '#999' } }
     },
