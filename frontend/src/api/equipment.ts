@@ -141,6 +141,25 @@ export const equipmentApi = {
     return response.data
   },
 
+  uploadKnowledgeDoc: async (file: File) => {
+    const formData = new FormData()
+    formData.append('file', file)
+    const response = await apiClient.post('/knowledge/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+    return response.data
+  },
+
+  listKnowledgeDocs: async () => {
+    const response = await apiClient.get('/knowledge/list')
+    return response.data
+  },
+
+  deleteKnowledgeDoc: async (docId: string) => {
+    const response = await apiClient.delete(`/knowledge/${docId}`)
+    return response.data
+  },
+
   healthCheck: async () => {
     const response = await apiClient.get('/health')
     return response.data

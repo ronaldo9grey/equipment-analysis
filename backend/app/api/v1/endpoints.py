@@ -18,8 +18,9 @@ from app.schemas.equipment import (
     AnalyzeResponse
 )
 from app.services.file_parser import get_parser
-from app.services.langchain_analyzer import get_langchain_analyzer, rag_retriever
+from app.services.langchain_analyzer import get_langchain_analyzer
 from app.services.simulation_engine import simulation_engine
+from app.services.knowledge_base import knowledge_manager
 
 logger = logging.getLogger(__name__)
 
@@ -137,18 +138,6 @@ async def upload_file(
             db.add(table_data)
 
         db.commit()
-
-        try:
-            table_summaries = []
-            for table in parse_result.get("tables", [])[:5]:
-                summary = f"表名: {table.get('table_name')}, 记录数: {table.get('row_count')}, 字段: {', '.join(table.get('columns', [])[:10])}"
-                table_summaries.append(summary)
-            
-            doc_text = f"文件: {file.filename}, 包含 {len(parse_result.get('tables', []))} 个数据表. {'; '.join(table_summaries)}"
-            rag_retriever.add_documents([doc_text], [{"file_name": file.filename, "type": "upload"}])
-            logger.info(f"已将文件信息添加到知识库: {file.filename}")
-        except Exception as e:
-            logger.warning(f"添加到知识库失败: {str(e)}")
 
         return AnalysisRecordResponse(
             id=record.id,
@@ -508,6 +497,67 @@ async def delete_record(
         os.remove(file_location)
 
     return {"message": "删除成功"}
+
+
+@router.post("/knowledge/upload")
+async def upload_knowledge_document(
+    file: UploadFile = File(...),
+):
+    """上传文档到知识库"""
+    try:
+        result = knowledge_manager.add_document(file.file, file.filename)
+        if result.get("success"):
+            return {
+                "success": True,
+                "message": result.get("message"),
+                "data": {
+                    "doc_id": result.get("doc_id"),
+                    "file_name": result.get("file_name"),
+                    "chunks_count": result.get("chunks_count")
+                }
+            }
+        else:
+            raise HTTPException(status_code=400, detail=result.get("message"))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"上传知识库文档失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.get("/knowledge/list")
+async def list_knowledge_documents():
+    """列出知识库中的文档"""
+    try:
+        docs = knowledge_manager.list_documents()
+        return {
+            "success": True,
+            "data": docs
+        }
+    except Exception as e:
+        logger.error(f"获取知识库列表失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@router.delete("/knowledge/{doc_id}")
+async def delete_knowledge_document(doc_id: str):
+    """删除知识库中的文档"""
+    try:
+        result = knowledge_manager.delete_document(doc_id)
+        if result.get("success"):
+            return {
+                "success": True,
+                "message": result.get("message")
+            }
+        else:
+            raise HTTPException(status_code=404, detail=result.get("message"))
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"删除知识库文档失败: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
 
 
 @router.post("/simulation/start")

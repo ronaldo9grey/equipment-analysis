@@ -68,6 +68,20 @@
               </el-button>
             </el-card>
 
+            <el-card class="knowledge-card" shadow="hover">
+              <template #header>
+                <div class="card-header">
+                  <span><el-icon><Collection /></el-icon> 知识库</span>
+                  <el-button type="primary" link size="small" @click="knowledgeDialogVisible = true; loadKnowledgeDocs()">
+                    管理
+                  </el-button>
+                </div>
+              </template>
+              <div class="knowledge-tip">
+                上传设备手册等文档，AI分析时将参考知识库内容
+              </div>
+            </el-card>
+
             <el-card class="records-card" shadow="hover" v-if="records.length > 0">
               <template #header>
                 <div class="card-header">
@@ -263,6 +277,42 @@
       />
       <el-empty v-else description="暂无数据" />
     </el-dialog>
+
+    <el-dialog v-model="knowledgeDialogVisible" title="知识库管理" width="600px">
+      <div class="knowledge-dialog">
+        <el-upload
+          class="knowledge-upload"
+          drag
+          :auto-upload="false"
+          :show-file-list="false"
+          :on-change="(file: any) => { handleUploadKnowledge(file.raw); knowledgeDialogVisible = false }"
+          accept=".pdf,.txt"
+        >
+          <el-icon class="upload-icon"><UploadFilled /></el-icon>
+          <div class="upload-text">
+            拖拽或<em>点击上传</em>设备手册
+          </div>
+          <template #tip>
+            <div class="upload-tip">支持 PDF、TXT 格式</div>
+          </template>
+        </el-upload>
+
+        <el-divider>已上传文档</el-divider>
+
+        <el-table :data="knowledgeDocs" stripe size="small" v-if="knowledgeDocs.length > 0">
+          <el-table-column prop="file_name" label="文件名" min-width="200" />
+          <el-table-column prop="chunks_count" label="知识片段" width="100" />
+          <el-table-column label="操作" width="100">
+            <template #default="{ row }">
+              <el-button type="danger" link size="small" @click="handleDeleteKnowledge(row.doc_id, row.file_name)">
+                删除
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+        <el-empty v-else description="知识库为空" :image-size="60" />
+      </div>
+    </el-dialog>
   </div>
 </template>
 
@@ -279,7 +329,8 @@ import {
   Folder,
   DataLine,
   Loading,
-  Download
+  Download,
+  Collection
 } from '@element-plus/icons-vue'
 import { equipmentApi, type AnalysisRecord, type TableInfo } from './api/equipment'
 
@@ -304,6 +355,9 @@ const analyzeButtonText = computed(() => {
 })
 
 const useLocalModel = ref(false)
+const knowledgeDocs = ref<any[]>([])
+const knowledgeDialogVisible = ref(false)
+const uploadingKnowledge = ref(false)
 const records = ref<AnalysisRecord[]>([])
 const selectedRecord = ref<AnalysisRecord | null>(null)
 const tables = ref<TableInfo[]>([])
@@ -374,6 +428,45 @@ const loadRecords = async () => {
     records.value = await equipmentApi.getRecords(0, 20)
   } catch (error) {
     console.error('加载记录失败:', error)
+  }
+}
+
+const loadKnowledgeDocs = async () => {
+  try {
+    const result = await equipmentApi.listKnowledgeDocs()
+    knowledgeDocs.value = result.data || []
+  } catch (error) {
+    console.error('加载知识库失败:', error)
+  }
+}
+
+const handleUploadKnowledge = async (file: File) => {
+  uploadingKnowledge.value = true
+  try {
+    await equipmentApi.uploadKnowledgeDoc(file)
+    ElMessage.success('文档已添加到知识库')
+    loadKnowledgeDocs()
+  } catch (error: any) {
+    ElMessage.error(error.message || '上传失败')
+  } finally {
+    uploadingKnowledge.value = false
+  }
+}
+
+const handleDeleteKnowledge = async (docId: string, fileName: string) => {
+  try {
+    await ElMessageBox.confirm(`确定要从知识库中删除 "${fileName}" 吗？`, '确认删除', {
+      confirmButtonText: '确定',
+      cancelButtonText: '取消',
+      type: 'warning'
+    })
+    await equipmentApi.deleteKnowledgeDoc(docId)
+    ElMessage.success('删除成功')
+    loadKnowledgeDocs()
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error('删除失败')
+    }
   }
 }
 
@@ -940,6 +1033,24 @@ onUnmounted(() => {
 .upload-tip {
   font-size: 11px;
   margin-top: 6px;
+}
+
+.knowledge-card {
+  margin-top: 12px;
+}
+
+.knowledge-tip {
+  font-size: 12px;
+  color: #909399;
+  line-height: 1.6;
+}
+
+.knowledge-dialog {
+  padding: 10px;
+}
+
+.knowledge-upload {
+  margin-bottom: 20px;
 }
 
 .upload-btn {
