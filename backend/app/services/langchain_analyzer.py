@@ -1,4 +1,5 @@
-from langchain_community.chat_models import ChatOpenAI, ChatOllama
+from langchain_openai import ChatOpenAI
+from langchain_community.chat_models import ChatOllama
 from langchain.schema import HumanMessage, SystemMessage
 from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain.chains import LLMChain

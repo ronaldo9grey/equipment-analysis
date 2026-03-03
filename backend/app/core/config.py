@@ -18,8 +18,9 @@ class Settings(BaseSettings):
 
     # AI配置
     DEEPSEEK_API_KEY: Optional[str] = None
-    DEEPSEEK_API_URL: str = "https://api.deepseek.com/v1/chat/completions"
+    DEEPSEEK_API_URL: str = "https://api.deepseek.com/v1"
     DEEPSEEK_MODEL: str = "deepseek-chat"
+    OPENAI_API_KEY: Optional[str] = None
 
     # 本地AI配置 (Ollama)
     OLLAMA_BASE_URL: str = "http://localhost:11434"
