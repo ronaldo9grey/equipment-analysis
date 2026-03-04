@@ -227,7 +227,7 @@
                     <div class="simulation-chart">
                       <div class="chart-controls">
                         <span class="chart-label">选择字段：</span>
-                        <el-select v-model="selectedChartFields" multiple collapse-tags collapse-tags-tooltip size="small" placeholder="选择字段" @change="updateChart">
+                        <el-select v-model="selectedChartFields" multiple size="small" placeholder="选择字段" @change="updateChart" style="max-width: 300px;">
                           <el-option v-for="col in simulationColumns" :key="col" :label="col" :value="col" />
                         </el-select>
                       </div>
@@ -686,7 +686,7 @@ const updateChart = () => {
     return
   }
   
-  const fields = selectedChartFields.value.slice(0, 1)
+  const fields = selectedChartFields.value
   const maxPoints = 20
   const historyData = simulationHistory.value.slice(-maxPoints)
   
@@ -706,6 +706,13 @@ const updateChart = () => {
       symbolSize: 8,
       showSymbol: true,
       step: 'end',
+      label: {
+        show: true,
+        position: 'top',
+        fontSize: 10,
+        formatter: '{c}',
+        color: color
+      },
       xAxisIndex: 0,
       yAxisIndex: idx,
       lineStyle: { color, width: 2 },
@@ -720,23 +727,18 @@ const updateChart = () => {
     type: 'value',
     name: field,
     nameTextStyle: { fontSize: 11, color: chartColors[idx % chartColors.length] },
-    position: 'left',
+    position: idx === 0 ? 'left' : 'right',
     axisLine: { lineStyle: { color: chartColors[idx % chartColors.length] } },
     axisLabel: { fontSize: 10 },
-    splitLine: { show: true, lineStyle: { type: 'dashed', opacity: 0.3 } }
+    splitLine: { show: idx === 0, lineStyle: { type: 'dashed', opacity: 0.3 } }
   }))
   
   chartOptions.value = {
-    title: {
-      text: '实时数据流',
-      left: 'center',
-      textStyle: { fontSize: 14 }
-    },
     tooltip: {
       trigger: 'axis',
       axisPointer: { type: 'cross', label: { backgroundColor: '#6a7985' } },
       formatter: (params: any) => {
-        let result = params[0]?.name + '<br/>'
+        let result = `时间点 ${params[0]?.value?.[0] || 0}<br/>`
         params.forEach((p: any) => {
           result += `${p.marker} ${p.seriesName}: ${p.value?.[1] ?? '-'}<br/>`
         })
@@ -745,16 +747,20 @@ const updateChart = () => {
     },
     legend: {
       data: fields,
-      top: 25,
+      top: 5,
       textStyle: { fontSize: 11 }
     },
     grid: {
-      left: 50, right: 20, top: 40, bottom: 30
+      left: 50, right: 60, top: 35, bottom: 30,
+      containLabel: true
     },
     xAxis: {
       type: 'value',
       minInterval: 1,
-      axisLabel: { show: false },
+      name: '时间',
+      nameLocation: 'middle',
+      nameGap: 20,
+      axisLabel: { fontSize: 10 },
       axisLine: { lineStyle: { color: '#999' } }
     },
     yAxis: yAxes,

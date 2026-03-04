@@ -4,50 +4,58 @@ import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
 
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
-from pypdf import PdfReader
-
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
+
+text_splitter = None
+vectorstore = None
+
+
+def _get_text_splitter():
+    global text_splitter
+    if text_splitter is None:
+        from langchain_text_splitters import RecursiveCharacterTextSplitter
+        text_splitter = RecursiveCharacterTextSplitter(
+            chunk_size=1000,
+            chunk_overlap=200
+        )
+    return text_splitter
+
+
+def _get_vectorstore():
+    global vectorstore
+    if vectorstore is None:
+        try:
+            if settings.OPENAI_API_KEY:
+                from langchain_openai import OpenAIEmbeddings
+                from langchain_community.vectorstores import Chroma
+                
+                embeddings = OpenAIEmbeddings(
+                    model="text-embedding-3-small",
+                    openai_api_key=settings.OPENAI_API_KEY
+                )
+                vectorstore = Chroma(
+                    persist_directory=os.path.join(settings.BASE_DIR, "data", "knowledge_vectorstore"),
+                    embedding_function=embeddings
+                )
+                logger.info("知识库向量数据库初始化成功")
+        except Exception as e:
+            logger.error(f"知识库向量数据库初始化失败: {str(e)}")
+    return vectorstore
 
 
 class KnowledgeBaseManager:
     """知识库管理器"""
 
     def __init__(self):
-        self.embeddings = None
-        self.vectorstore = None
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200
-        )
         self.docs_dir = os.path.join(settings.BASE_DIR, "data", "knowledge_docs")
         os.makedirs(self.docs_dir, exist_ok=True)
-        self._init_vectorstore()
-
-    def _init_vectorstore(self):
-        """初始化向量数据库"""
-        try:
-            if settings.OPENAI_API_KEY:
-                self.embeddings = OpenAIEmbeddings(
-                    model="text-embedding-3-small",
-                    openai_api_key=settings.OPENAI_API_KEY
-                )
-                self.vectorstore = Chroma(
-                    persist_directory=os.path.join(settings.BASE_DIR, "data", "knowledge_vectorstore"),
-                    embedding_function=self.embeddings
-                )
-                logger.info("知识库向量数据库初始化成功")
-        except Exception as e:
-            logger.error(f"知识库向量数据库初始化失败: {str(e)}")
 
     def _extract_text_from_pdf(self, file_path: str) -> str:
         """从 PDF 提取文本"""
         try:
+            from pypdf import PdfReader
             reader = PdfReader(file_path)
             text = ""
             for page in reader.pages:
@@ -68,7 +76,8 @@ class KnowledgeBaseManager:
 
     def add_document(self, file_content: bytes, file_name: str) -> Dict[str, Any]:
         """添加文档到知识库"""
-        if not self.vectorstore:
+        vs = _get_vectorstore()
+        if not vs:
             return {
                 "success": False,
                 "message": "知识库未初始化，请配置 OPENAI_API_KEY"
@@ -100,8 +109,10 @@ class KnowledgeBaseManager:
                     "message": "无法从文档中提取文本"
                 }
 
-            chunks = self.text_splitter.split_text(text)
+            splitter = _get_text_splitter()
+            chunks = splitter.split_text(text)
             
+            from langchain_core.documents import Document
             documents = [
                 Document(
                     page_content=chunk,
@@ -115,7 +126,7 @@ class KnowledgeBaseManager:
                 for i, chunk in enumerate(chunks)
             ]
 
-            self.vectorstore.add_documents(documents)
+            vs.add_documents(documents)
             
             logger.info(f"知识库添加文档成功: {file_name}, {len(chunks)} 个 chunks")
 
@@ -136,11 +147,12 @@ class KnowledgeBaseManager:
 
     def list_documents(self) -> List[Dict[str, Any]]:
         """列出知识库中的文档"""
-        if not self.vectorstore:
+        vs = _get_vectorstore()
+        if not vs:
             return []
 
         try:
-            docs = self.vectorstore.get()
+            docs = vs.get()
             doc_info = {}
             
             for doc_id, metadata in zip(docs.get("ids", []), docs.get("metadatas", [])):
@@ -161,14 +173,15 @@ class KnowledgeBaseManager:
 
     def delete_document(self, doc_id: str) -> Dict[str, Any]:
         """删除知识库中的文档"""
-        if not self.vectorstore:
+        vs = _get_vectorstore()
+        if not vs:
             return {
                 "success": False,
                 "message": "知识库未初始化"
             }
 
         try:
-            docs = self.vectorstore.get()
+            docs = vs.get()
             ids_to_delete = []
             
             for doc_id_item, metadata in zip(docs.get("ids", []), docs.get("metadatas", [])):
@@ -176,7 +189,7 @@ class KnowledgeBaseManager:
                     ids_to_delete.append(doc_id_item)
 
             if ids_to_delete:
-                self.vectorstore.delete(ids_to_delete)
+                vs.delete(ids_to_delete)
                 
                 for file_name in os.listdir(self.docs_dir):
                     if file_name.startswith(doc_id):

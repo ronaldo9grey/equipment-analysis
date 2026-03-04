@@ -1,15 +1,9 @@
 from langchain_openai import ChatOpenAI
 from langchain_community.chat_models import ChatOllama
-from langchain.schema import HumanMessage, SystemMessage
-from langchain.prompts import ChatPromptTemplate, MessagesPlaceholder
-from langchain.chains import LLMChain
-from langchain.agents import AgentExecutor, create_openai_functions_agent
-from langchain.tools import Tool
-from langchain.memory import ConversationBufferMemory
-from langchain_community.vectorstores import Chroma
-from langchain_openai import OpenAIEmbeddings
-from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.schema import Document
+from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.documents import Document
+from langchain_core.tools import tool
 from typing import Dict, Any, List, Optional
 import json
 import logging
@@ -26,16 +20,17 @@ class RAGRetriever:
     def __init__(self):
         self.embeddings = None
         self.vectorstore = None
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=1000,
-            chunk_overlap=200
-        )
+        self.text_splitter = None
         self._init_vectorstore()
 
     def _init_vectorstore(self):
         """初始化向量数据库"""
         try:
             if settings.OPENAI_API_KEY:
+                from langchain_openai import OpenAIEmbeddings
+                from langchain_community.vectorstores import Chroma
+                from langchain_text_splitters import RecursiveCharacterTextSplitter
+                
                 self.embeddings = OpenAIEmbeddings(
                     model="text-embedding-3-small",
                     openai_api_key=settings.OPENAI_API_KEY
@@ -43,6 +38,10 @@ class RAGRetriever:
                 self.vectorstore = Chroma(
                     persist_directory="./data/vectorstore",
                     embedding_function=self.embeddings
+                )
+                self.text_splitter = RecursiveCharacterTextSplitter(
+                    chunk_size=1000,
+                    chunk_overlap=200
                 )
                 logger.info("RAG 向量数据库初始化成功")
         except Exception as e:
@@ -93,10 +92,7 @@ class LangChainAnalyzer:
     def __init__(self, use_local_model: bool = False):
         self.use_local_model = use_local_model
         self.rag = RAGRetriever()
-        self.memory = ConversationBufferMemory(
-            memory_key="chat_history",
-            return_messages=True
-        )
+        self.memory = None
         self._init_llm()
 
     def _init_llm(self):
@@ -113,8 +109,13 @@ class LangChainAnalyzer:
                     model=settings.DEEPSEEK_MODEL or "deepseek-chat",
                     temperature=0.7,
                     api_key=settings.DEEPSEEK_API_KEY,
-                    base_url=settings.DEEPSEEK_API_URL or "https://api.deepseek.com"
+                    base_url=settings.DEEPSEEK_API_URL or "https://api.deepseek.com/v1"
                 )
+            from langchain.memory import ConversationBufferMemory
+            self.memory = ConversationBufferMemory(
+                memory_key="chat_history",
+                return_messages=True
+            )
             logger.info(f"LangChain LLM 初始化成功: {'本地模型' if self.use_local_model else 'DeepSeek'}")
         except Exception as e:
             logger.error(f"LLM 初始化失败: {str(e)}")
