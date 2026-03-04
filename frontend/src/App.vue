@@ -317,7 +317,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { 
   UploadFilled, 
@@ -426,6 +426,17 @@ const loadRecords = async () => {
   }
 }
 
+watch(activeTab, async (newTab) => {
+  if (newTab === 'simulation' && selectedRecord.value) {
+    simulationRunning.value = false
+    simulationData.value = []
+    simulationHistory.value = []
+    simulationColumns.value = []
+    selectedChartFields.value = []
+    chartOptions.value = {}
+  }
+})
+
 const loadKnowledgeDocs = async () => {
   try {
     const result = await equipmentApi.listKnowledgeDocs()
@@ -470,6 +481,12 @@ const handleDeleteKnowledge = async (docId: string, fileName: string) => {
 
 const selectRecord = async (record: AnalysisRecord) => {
   selectedRecord.value = record
+  simulationRunning.value = false
+  simulationData.value = []
+  simulationHistory.value = []
+  simulationColumns.value = []
+  selectedChartFields.value = []
+  chartOptions.value = {}
   
   if (record.table_name) {
     activeTab.value = 'data'
