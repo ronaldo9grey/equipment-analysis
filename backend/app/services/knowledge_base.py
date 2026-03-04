@@ -27,19 +27,29 @@ def _get_vectorstore():
     global vectorstore
     if vectorstore is None:
         try:
+            from langchain_community.vectorstores import Chroma
+            
+            embeddings = None
             if settings.OPENAI_API_KEY:
                 from langchain_openai import OpenAIEmbeddings
-                from langchain_community.vectorstores import Chroma
-                
                 embeddings = OpenAIEmbeddings(
                     model="text-embedding-3-small",
                     openai_api_key=settings.OPENAI_API_KEY
                 )
-                vectorstore = Chroma(
-                    persist_directory=os.path.join(settings.BASE_DIR, "data", "knowledge_vectorstore"),
-                    embedding_function=embeddings
-                )
-                logger.info("知识库向量数据库初始化成功")
+                logger.info("知识库使用 OpenAI Embedding")
+            elif settings.DEEPSEEK_API_KEY:
+                # DeepSeek 不支持 embedding API，知识库功能不可用
+                logger.info("DeepSeek 不支持 embedding API，知识库功能已禁用。请配置 OPENAI_API_KEY 以使用知识库功能。")
+                return None
+            else:
+                logger.info("未配置 API Key，知识库功能不可用")
+                return None
+            
+            vectorstore = Chroma(
+                persist_directory=os.path.join(settings.BASE_DIR, "data", "knowledge_vectorstore"),
+                embedding_function=embeddings
+            )
+            logger.info("知识库向量数据库初始化成功")
         except Exception as e:
             logger.error(f"知识库向量数据库初始化失败: {str(e)}")
     return vectorstore

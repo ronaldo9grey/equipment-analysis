@@ -26,31 +26,41 @@ class RAGRetriever:
     def _init_vectorstore(self):
         """初始化向量数据库"""
         try:
+            from langchain_community.vectorstores import Chroma
+            from langchain_text_splitters import RecursiveCharacterTextSplitter
+            
+            # 优先使用 OpenAI，如果没有则使用 DeepSeek
             if settings.OPENAI_API_KEY:
                 from langchain_openai import OpenAIEmbeddings
-                from langchain_community.vectorstores import Chroma
-                from langchain_text_splitters import RecursiveCharacterTextSplitter
-                
                 self.embeddings = OpenAIEmbeddings(
                     model="text-embedding-3-small",
                     openai_api_key=settings.OPENAI_API_KEY
                 )
-                self.vectorstore = Chroma(
-                    persist_directory="./data/vectorstore",
-                    embedding_function=self.embeddings
-                )
-                self.text_splitter = RecursiveCharacterTextSplitter(
-                    chunk_size=1000,
-                    chunk_overlap=200
-                )
-                logger.info("RAG 向量数据库初始化成功")
+                logger.info("使用 OpenAI Embedding")
+            elif settings.DEEPSEEK_API_KEY:
+                # DeepSeek 不支持 embedding API，暂时禁用 RAG
+                logger.info("DeepSeek 不支持 embedding API，RAG 功能已禁用")
+                return
+            else:
+                logger.info("未配置 API Key，跳过知识库初始化")
+                return
+            
+            self.vectorstore = Chroma(
+                persist_directory="./data/vectorstore",
+                embedding_function=self.embeddings
+            )
+            self.text_splitter = RecursiveCharacterTextSplitter(
+                chunk_size=1000,
+                chunk_overlap=200
+            )
+            logger.info("RAG 向量数据库初始化成功")
         except Exception as e:
             logger.error(f"RAG 向量数据库初始化失败: {str(e)}")
 
     def add_documents(self, texts: List[str], metadatas: List[Dict] = None):
         """添加文档到知识库"""
         if not self.vectorstore:
-            logger.warning("向量数据库未初始化")
+            logger.warning("知识库未初始化，请配置 DEEPSEEK_API_KEY 或 OPENAI_API_KEY 以启用知识库功能")
             return
 
         documents = [
@@ -105,11 +115,17 @@ class LangChainAnalyzer:
                     temperature=0.7
                 )
             else:
+                # DeepSeek API: base_url 应该是 https://api.deepseek.com/v1
+                # 而不是包含 /chat/completions 的完整 URL
+                base_url = settings.DEEPSEEK_API_URL or "https://api.deepseek.com/v1"
+                if "/chat/completions" in base_url:
+                    base_url = base_url.replace("/chat/completions", "")
+                
                 self.llm = ChatOpenAI(
                     model=settings.DEEPSEEK_MODEL or "deepseek-chat",
                     temperature=0.7,
-                    api_key=settings.DEEPSEEK_API_KEY,
-                    base_url=settings.DEEPSEEK_API_URL or "https://api.deepseek.com/v1"
+                    openai_api_key=settings.DEEPSEEK_API_KEY,
+                    openai_api_base=base_url
                 )
             from langchain.memory import ConversationBufferMemory
             self.memory = ConversationBufferMemory(
@@ -136,28 +152,36 @@ class LangChainAnalyzer:
             }
 
         try:
+            logger.info(f"开始分析: {data.get('file_name', 'unknown')}")
             context = self._prepare_context(data, analysis_type)
             
             retrieved_context = ""
             if analysis_type == "table" or analysis_type == "general":
                 query = f"分析 {data.get('file_name', '')} {data.get('table_name', '')}"
+                logger.info(f"RAG检索: {query[:50]}...")
                 docs = self.rag.retrieve(query, k=3)
+                logger.info(f"RAG检索完成: 找到 {len(docs)} 条记录")
                 if docs:
                     retrieved_context = "\n\n## 相关历史案例:\n"
                     for i, doc in enumerate(docs, 1):
                         retrieved_context += f"\n【案例 {i}】:\n{doc['content'][:500]}\n"
 
             prompt = self._build_prompt(context, retrieved_context, user_query, analysis_type)
+            logger.info(f"Prompt构建完成: {len(prompt)} 字符")
 
             messages = [
                 SystemMessage(content="你是一位专业的设备数据分析专家，擅长分析设备运行数据并给出专业建议。"),
                 HumanMessage(content=prompt)
             ]
 
+            logger.info("调用LLM...")
             response = self.llm.invoke(messages)
             result_content = response.content if hasattr(response, 'content') else str(response)
+            logger.info(f"LLM响应: {len(result_content)} 字符")
 
+            logger.info("保存到知识库...")
             self._save_to_knowledge_base(data, result_content, analysis_type)
+            logger.info("分析完成")
 
             return {
                 "status": "success",
